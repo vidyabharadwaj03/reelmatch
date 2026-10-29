@@ -38,6 +38,8 @@ Models that pass are ranked (verified over untested, uses all photos, cheaper fi
 | Model | Status | Fits |
 |---|---|---|
 | Seedance 2.5 (480p draft) | tested, 5 photos and 15s | many photos, 4-30s, sound, reference video and audio, extend and edit, about 31 credits per second |
+| MiniMax H3 (open weights) | tested, 2 photos and 5s | up to 9 photos as cuts, 2-15s, sound, runs on Comfy GPUs |
+| LTX-2.5 (open weights) | tested, 1 photo and 5s | one photo, 2-20s, sound, runs on Comfy GPUs |
 | Grok Imagine 1.5 Lite | tested, 1 photo and 5s | one photo, 1-15s, sound, about 10 credits per second |
 | Pruna P-Video 2 | tested, 1 photo and 5s | two photos (first and last frame), 1-20s, sound, about 5 credits per second |
 | FLUX 3 Max | tested, 1 photo and 5s | up to 10 photos as keyframes, 5-20s, sound, about 13 credits per second |
@@ -45,10 +47,10 @@ Models that pass are ranked (verified over untested, uses all photos, cheaper fi
 | Veo 3.1 Fast | tested, 1 photo and 4s | one photo, 4-8s, sound, about 21 credits per second |
 | Wan 2.7 | tested, 1 photo and 5s | one photo, 5s, silent, about 106 credits |
 | Kling 4.0 | wired, not tested | up to 10 keyframes, 3-30s, sound, about 47 credits per second |
-| MiniMax H3 (open weights), LTX-2.5, Seedance 2.0 real-human (KYC) | not wired | |
+| Seedance 2.0 real-human (KYC) | not wired | needs a selfie for identity verification |
 
 A model is only picked automatically when the brief is inside what we have actually tested. You can still choose any other model that fits from "Why this model?".
-Prices come from real billing records (Kling's is Comfy's estimate until it is tested). See `docs/MODEL_RESEARCH.md` for sources, caveats and how scores are weighted.
+Prices come from real billing records. Kling's is Comfy's estimate until it is tested, and the open-weights models run on Comfy's GPUs, so their credit cost is a rough estimate (a 5 second clip used 18 to 47 GPU-seconds). See `docs/MODEL_RESEARCH.md` for sources, caveats and how scores are weighted.
 
 ## Voice, music and video
 
@@ -77,7 +79,9 @@ The form requires confirmation that you own the photos, or everyone shown has ag
 
 - Drafts only (480p for Seedance). A 1080p final from the draft is not built.
 - Seedance and Wan are partner APIs through Comfy, so this build is not open-weights. MiniMax H3 has open weights, but a third-party analysis says its license excludes the US. Check the license.
-- Kling 4.0 is wired but not yet run. MiniMax H3, LTX-2.5 and the Seedance KYC route are not wired yet.
+- Kling 4.0 is wired but not yet run, and the Seedance KYC route is not wired.
+- Open weights: LTX-2.5 and MiniMax H3 run from model files on Comfy's GPUs with no partner API. H3's license reportedly excludes the US, and LTX's license has not been reviewed. Check both before relying on them.
+- The chooser prefers open-weights models by a small margin when quality looks comparable.
 - Run live and tested: generating from photos. Built from the node spec but **not yet run live**: sending reference video or audio to Seedance, extend and edit.
   Mixing, stitching, scripts and the recorder's WAV conversion are tested offline. The microphone itself needs a human and a browser permission.
 

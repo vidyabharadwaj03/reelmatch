@@ -12,7 +12,8 @@ SEEDANCE_DRAFT_CREDITS_PER_SECOND = 31.2  # ran: 249 credits for 8s, 467 for 15s
 WAN_5S_CREDITS = 105.5  # ran: billed for one 5s 720p clip
 # Credits per second of output. Seedance is billed. The rest are Comfy's estimator for our exact settings, assumed linear in length.
 PER_SECOND = {"seedance-2.5-draft": SEEDANCE_DRAFT_CREDITS_PER_SECOND, "grok-imagine-1.5-lite": 9.66, "pruna-p-video-2": 4.53,
-              "flux-3-max-i2v": 12.82, "kling-4-i2v": 47.4, "heygen-video-1-r2v": 6.03, "veo-3.1": 21.1}
+              "flux-3-max-i2v": 12.82, "kling-4-i2v": 47.4, "heygen-video-1-r2v": 6.03, "veo-3.1": 21.1,
+              "ltx-2.5-i2v": 1.0, "minimax-h3-r2v": 2.0}  # LTX runs on Comfy GPUs: 18 GPU-seconds for 5s, credits not itemized, so this is a rough estimate
 
 
 @dataclass(frozen=True)
@@ -127,7 +128,7 @@ MODELS = [
 _MEDIA = {
     "seedance-2.5-draft": (3, 3, ("reference", "extend", "edit"),
                            ("comfy", "Reference-to-video takes images, video clips and audio clips; node task types are reference, edit and extend. Comfy's template says 6 clips each, other docs say 3, so we send at most 3", "")),
-    "minimax-h3-r2v": (3, 3, ("reference",), ("comfy", "Template takes up to 3 videos and 3 audio clips alongside the images", "")),
+    "minimax-h3-r2v": (0, 0, ("reference",), ("comfy", "Template takes up to 3 videos and 3 audio clips; our adapter does not send them yet", "")),
     "heygen-video-1-r2v": (0, 0, ("reference",), ("comfy", "Node takes up to 3 videos and 3 audio clips; our adapter does not send them yet", "")),
 }
 MODELS = [replace(m, video_refs=_MEDIA[m.id][0], audio_refs=_MEDIA[m.id][1], video_modes=_MEDIA[m.id][2], evidence=m.evidence + (_MEDIA[m.id][3],))
@@ -138,6 +139,8 @@ _RAN = {
     "pruna-p-video-2": dict(taste=-3, evidence=(("ran", "Cheapest at 22.6 credits and 27s, but the sign was lost when the friends turned away", ""),)),
     "flux-3-max-i2v": dict(taste=3, evidence=(("ran", "Most faithful to the photo with only gentle motion. 21s to render, billed 64.1 credits", ""),)),
     "veo-3.1": dict(taste=2, tested_s=4, evidence=(("ran", "Re-imagined the street and framing noticeably; sign stayed readable. 4s clip, 53s to render, billed 84.4 credits", ""),)),
+    "ltx-2.5-i2v": dict(taste=6, evidence=(("ran", "Open weights on Comfy GPUs. Vertical, lively, and the sign text stayed readable. 26s to render, about 18 GPU-seconds, credits not itemized", ""),)),
+    "minimax-h3-r2v": dict(taste=6, tested_refs=2, evidence=(("ran", "Open weights on Comfy GPUs. Two photos became two cuts (friends with the sign, then the man with the newspaper) with people kept consistent; small text came out garbled. 59s to render, about 47 GPU-seconds", ""),)),
     "heygen-video-1-r2v": dict(taste=0, evidence=(("ran", "Capped at 480p here, 86s to render, billed 30.2 credits. The sign shrank mid-clip and returned at the end", ""),)),
 }
 
@@ -149,9 +152,11 @@ _WIRED = {
     "kling-4-i2v": dict(adapter="kling4", min_s=3, max_s=30, max_refs=10, audio=True),
     "heygen-video-1-r2v": dict(adapter="heygen", min_s=5, max_s=15, max_refs=9, audio=True),
     "veo-3.1": dict(adapter="veo", min_s=4, max_s=8, max_refs=1, audio=True),
+    "ltx-2.5-i2v": dict(adapter="ltx25", min_s=2, max_s=20, max_refs=1, audio=True, open_weights="yes"),
+    "minimax-h3-r2v": dict(adapter="h3", min_s=2, max_s=15, max_refs=9, audio=True, open_weights="yes"),
 }
 MODELS = [replace(m, **_WIRED[m.id]) if m.id in _WIRED else m for m in MODELS]
-MODELS = [replace(m, status="verified", **{k: v for k, v in _RAN[m.id].items() if k != "evidence"}, evidence=_RAN[m.id]["evidence"] + m.evidence)
+MODELS = [replace(m, status="verified", people="ok", **{k: v for k, v in _RAN[m.id].items() if k != "evidence"}, evidence=(("ran", "Accepted a real-person photo", ""),) + _RAN[m.id]["evidence"] + m.evidence)
           if m.id in _RAN else m for m in MODELS]
 # What the first two verified models were tested with.
 MODELS = [replace(m, tested_refs=5, tested_s=15, taste=15) if m.id == "seedance-2.5-draft" else m for m in MODELS]
@@ -241,9 +246,12 @@ def choose(brief: dict, n_images: int) -> dict:
         if eligible:
             score = 100 + (10 if m.status == "verified" else 0)
             score += 20 if (m.max_refs is None or n_images <= m.max_refs) else 0
+            if m.max_refs is not None and n_images > m.max_refs:  # photos that would be ignored defeat the brief
+                score -= min(50, 10 * (n_images - m.max_refs))
             score += 5 if (subject == "product" and m.product_fit) else 0
             score += 3 if (int(brief.get("n_audio", 0)) and m.audio_refs) else 0
             score += m.taste
+            score += 4 if m.open_weights == "yes" else 0  # prefer open weights when quality is comparable
             score -= 30 if (m.status == "verified" and n_images > m.tested_refs) else 0
             score -= 15 if (m.status == "verified" and duration > m.tested_s) else 0
             score += 15 if (subject != "product" and m.people == "ok") else 0

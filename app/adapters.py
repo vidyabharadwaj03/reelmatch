@@ -4,7 +4,9 @@ Each builder turns (prompt, uploaded image names, duration) into a small ComfyUI
 partner node, saved with SaveVideo. Node and input names come from Comfy's own node specs (get_node), so they are exact.
 These run through the same path as Seedance: client.run(graph, api_key=...).
 """
+import json
 import re
+from pathlib import Path
 
 SAVE_ID = "776"
 
@@ -102,7 +104,49 @@ def build_veo(prompt, names, duration):
         "person_generation": "ALLOW", "seed": 0, "image": [ids[0], 0], "model": "veo-3.1-fast-generate", "generate_audio": True})
 
 
+WORKFLOWS = Path(__file__).parent / "workflows"
+
+
+def _template(name: str) -> dict:
+    """An open-weights workflow exactly as Comfy ran it, saved from a real job. Loaders, samplers and model files are all in it."""
+    return json.loads((WORKFLOWS / name).read_text())
+
+
+def build_ltx25(prompt, names, duration):
+    """LTX-2.5 image-to-video on Comfy's GPUs (open weights, no partner API). Node ids are from the saved graph."""
+    g = _template("ltx25_i2v.json")
+    g["395"]["inputs"]["image"] = names[0]  # Load First Frame
+    g["398:376"]["inputs"]["value"] = "Use the provided start image as the first frame. " + short(prompt, 900)  # Prompt
+    g["398:362"]["inputs"]["value"] = clamp(duration, 2, 20)  # Duration in seconds
+    g["403"]["inputs"]["aspect_ratio"] = "9:16 (Portrait Widescreen)"  # the template ships as 16:9
+    return g
+
+
+def build_h3(prompt, names, duration):
+    """MiniMax H3 reference-to-video on Comfy GPUs (open weights). Photos become <Picture N> references."""
+    g = _template("minimax_h3_r2v.json")
+    names = names[:9]
+    node = g["136"]["inputs"]
+    g["137"]["inputs"]["image"] = names[0]
+    if len(names) > 1:
+        g["139"]["inputs"]["image"] = names[1]
+    else:  # the template ships with two reference slots; drop the second
+        node.pop("ref_images.ref_image_1", None)
+        g.pop("139", None)
+    for i, name in enumerate(names[2:], start=2):
+        gid = str(910 + i)
+        g[gid] = {"_meta": {"title": f"Photo {i + 1}"}, "class_type": "LoadImage", "inputs": {"image": name}}
+        node[f"ref_images.ref_image_{i}"] = [gid, 0]
+    text = re.sub(r"[Rr]eference photo (\d+)", r"<Picture \1>", short(prompt, 1200))
+    text = re.sub(r"Shot (\d+)(?: \([^)]*\))?:", r"CUT \1:", text)  # H3 expects CUT 1, CUT 2 ..., with or without timings
+    pics = " and ".join(f"<Picture {i}>" for i in range(1, len(names) + 1))
+    g["138"]["inputs"]["value"] = f"Vertical social ad. Use {pics} as reference frames. {text}"
+    g["132"]["inputs"]["value"] = clamp(duration, 2, 15)  # seconds
+    g["115"]["inputs"]["aspect_ratio"] = "9:16 (Portrait Widescreen)"
+    return g
+
+
 BUILDERS = {
     "grok": ("Grok Imagine Lite", build_grok), "pruna": ("Pruna P-Video 2", build_pruna), "flux3": ("FLUX 3 Max", build_flux3),
-    "kling4": ("Kling 4.0", build_kling4), "heygen": ("HeyGen Video 1.0", build_heygen), "veo": ("Veo 3.1 Fast", build_veo),
+    "kling4": ("Kling 4.0", build_kling4), "ltx25": ("LTX-2.5 (open weights)", build_ltx25), "h3": ("MiniMax H3 (open weights)", build_h3), "heygen": ("HeyGen Video 1.0", build_heygen), "veo": ("Veo 3.1 Fast", build_veo),
 }

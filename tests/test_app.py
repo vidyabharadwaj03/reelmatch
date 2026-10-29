@@ -19,17 +19,19 @@ class ChooserTests(unittest.TestCase):
     def test_many_photos_long_video_with_sound_picks_seedance(self):
         self.assertEqual(choose({"duration": 15}, 5)["model"], "seedance-2.5-draft")
 
-    def test_single_photo_short_product_picks_the_best_tested_cheap_model(self):
+    def test_single_photo_short_product_picks_a_cheap_tested_model(self):
         r = choose({"duration": 5, "needs_audio": False, "subject": "product"}, 1)
-        self.assertEqual(r["model"], "grok-imagine-1.5-lite")
-        self.assertEqual(r["cost"], 48)
-        wan = next(x for x in r["ranking"] if x["id"] == "wan-2.7-i2v")
-        self.assertTrue(wan["eligible"])
-        self.assertEqual(wan["cost"], 106)
-
+        best = next(x for x in r["ranking"] if x["id"] == r["model"])
+        self.assertEqual(best["status"], "verified")
+        self.assertLessEqual(r["cost"], 50)
+        self.assertNotEqual(r["model"], "seedance-2.5-draft")
+        for other in ("grok-imagine-1.5-lite", "wan-2.7-i2v"):
+            self.assertTrue(next(x for x in r["ranking"] if x["id"] == other)["eligible"], other)
     def test_sound_requirement_rules_out_wan(self):
-        self.assertEqual(choose({"duration": 5}, 1)["model"], "seedance-2.5-draft")
-
+        r = choose({"duration": 5}, 1)
+        wan = next(x for x in r["ranking"] if x["id"] == "wan-2.7-i2v")
+        self.assertFalse(wan["eligible"])
+        self.assertTrue(any("No generated sound" in c["text"] for c in wan["checks"]))
     def test_long_video_only_seedance_fits(self):
         self.assertEqual(choose({"duration": 25}, 3)["model"], "seedance-2.5-draft")
 
@@ -38,13 +40,11 @@ class ChooserTests(unittest.TestCase):
         self.assertIsNone(r["model"])
 
     def test_budget_too_small_means_no_model(self):
-        self.assertIsNone(choose({"duration": 5, "budget": 10}, 1)["model"])
-
+        self.assertIsNone(choose({"duration": 5, "budget": 2}, 1)["model"])
     def test_models_without_an_adapter_are_never_eligible(self):
         for r in choose({"duration": 15}, 5)["ranking"]:
-            if r["id"] in ("minimax-h3-r2v", "ltx-2.5-i2v", "seedance-2.0-real-human"):
+            if r["id"] == "seedance-2.0-real-human":
                 self.assertFalse(r["eligible"], r["id"])
-
     def test_untested_models_are_never_picked_while_a_tested_one_fits(self):
         # Regression: cheap untested models (HeyGen, Pruna) used to outrank Seedance on price alone.
         for brief, n in (({"duration": 15}, 5), ({"duration": 10, "subject": "product"}, 3), ({"duration": 5, "subject": "product"}, 1)):
@@ -77,12 +77,17 @@ class SubjectTests(unittest.TestCase):
         wan = next(r for r in choose({"duration": 5, "subject": "people", "needs_audio": False}, 1)["ranking"] if r["id"] == "wan-2.7-i2v")
         self.assertTrue(any("Not tested with real-person" in c["text"] for c in wan["checks"]))
 
-    def test_people_prefer_model_that_accepted_real_faces(self):
-        self.assertEqual(choose({"duration": 5, "subject": "people", "needs_audio": False}, 1)["model"], "seedance-2.5-draft")
-
-    def test_open_weights_only_finds_nothing_wired(self):
-        self.assertIsNone(choose({"duration": 15, "subject": "product", "open_weights_only": True}, 3)["model"])
-
+    def test_models_we_ran_are_not_flagged_as_untested_with_real_faces(self):
+        r = choose({"duration": 5, "subject": "people", "needs_audio": False}, 1)
+        for x in r["ranking"]:
+            if x["status"] == "verified" and x["id"] != "wan-2.7-i2v":
+                self.assertFalse(any("Not tested with real-person" in c["text"] for c in x["checks"]), x["id"])
+    def test_open_weights_only_picks_only_open_weights_models(self):
+        r = choose({"duration": 15, "subject": "product", "open_weights_only": True}, 3)
+        self.assertIn(r["model"], ("minimax-h3-r2v", "ltx-2.5-i2v"))
+        for x in r["ranking"]:
+            if x["eligible"]:
+                self.assertEqual(x["open_weights"], "yes", x["id"])
     def test_every_listed_model_has_evidence(self):
         for r in choose({"duration": 15}, 3)["ranking"]:
             self.assertTrue(r["evidence"], r["id"])
@@ -101,15 +106,43 @@ class AdapterGraphTests(unittest.TestCase):
         from app import adapters
         return adapters.BUILDERS[key][1](self.PROMPT, [f"p{i}.jpg" for i in range(n)], d)
 
-    def test_every_builder_makes_one_partner_node_and_a_save_node(self):
+    def test_every_partner_builder_makes_one_partner_node_and_a_save_node(self):
         from app import adapters
-        for key in adapters.BUILDERS:
+        for key in ("grok", "pruna", "flux3", "kling4", "heygen", "veo"):
             g = self._g(key)
             self.assertEqual(g["776"]["class_type"], "SaveVideo", key)
             self.assertEqual(g["776"]["inputs"]["video"], ["789", 0], key)
             self.assertIn(g["789"]["class_type"], {"GrokVideoNode", "PrunaImageToVideoNode", "Flux3MaxImageToVideoNode", "Kling4ImageToVideoNode",
                                                     "HeyGenReferenceToVideoNode", "Veo3VideoGenerationNode"})
 
+    def test_ltx_graph_gets_the_photo_prompt_length_and_portrait_shape(self):
+        g = self._g("ltx25", n=1, d=8)
+        self.assertEqual(g["395"]["inputs"]["image"], "p0.jpg")
+        self.assertEqual(g["398:362"]["inputs"]["value"], 8)
+        self.assertIn("Portrait", g["403"]["inputs"]["aspect_ratio"])
+        self.assertTrue(g["398:376"]["inputs"]["value"].startswith("Use the provided start image as the first frame."))
+        self.assertIn("SaveVideo", {v["class_type"] for v in g.values()})
+
+    def test_h3_graph_turns_photos_into_picture_references_and_cuts(self):
+        g = self._g("h3", n=3, d=6)
+        refs = sorted(k for k in g["136"]["inputs"] if k.startswith("ref_images."))
+        self.assertEqual(refs, ["ref_images.ref_image_0", "ref_images.ref_image_1", "ref_images.ref_image_2"])
+        text = g["138"]["inputs"]["value"]
+        self.assertIn("<Picture 1>", text)
+        self.assertIn("CUT 1:", text)
+        self.assertNotIn("reference photo", text)
+        self.assertEqual(g["132"]["inputs"]["value"], 6)
+
+    def test_h3_with_one_photo_drops_the_second_reference_slot(self):
+        g = self._g("h3", n=1)
+        self.assertNotIn("139", g)
+        self.assertEqual([k for k in g["136"]["inputs"] if k.startswith("ref_images.")], ["ref_images.ref_image_0"])
+
+    def test_saved_open_weights_graphs_have_every_node_the_builders_edit(self):
+        for key, ids in (("ltx25", ("395", "398:376", "398:362", "403", "75")), ("h3", ("136", "137", "138", "132", "115", "92"))):
+            g = self._g(key, n=2)
+            for nid in ids:
+                self.assertIn(nid, g, (key, nid))
     def test_single_image_models_use_only_the_first_photo(self):
         for key in ("grok", "veo"):
             g = self._g(key)
@@ -152,6 +185,26 @@ class AdapterGraphTests(unittest.TestCase):
             media.crop_vertical(src, out)
             w, h = media.video_size(out)
             self.assertAlmostEqual(w / h, 9 / 16, delta=0.02)
+
+
+class PickTests(unittest.TestCase):
+    def test_soraa_style_ad_stays_on_the_model_tested_that_far(self):
+        self.assertEqual(choose({"duration": 15}, 5)["model"], "seedance-2.5-draft")
+
+    def test_photos_that_would_be_ignored_cost_a_model_the_pick(self):
+        # Regression: LTX (one photo) used to win a 20s, five-photo ad on price alone.
+        for brief, n in (({"duration": 20}, 5), ({"duration": 30, "subject": "product"}, 3)):
+            r = choose(brief, n)
+            self.assertEqual(r["model"], "seedance-2.5-draft", brief)
+
+    def test_two_photo_short_ad_goes_to_open_weights_h3(self):
+        self.assertEqual(choose({"duration": 5}, 2)["model"], "minimax-h3-r2v")
+
+    def test_models_never_claim_inputs_their_adapter_does_not_send(self):
+        # Regression: HeyGen and H3 listed reference video support their adapters did not use.
+        for m in __import__("app.registry", fromlist=["MODELS"]).MODELS:
+            if m.adapter in ("grok", "pruna", "flux3", "kling4", "heygen", "veo", "ltx25", "h3", "wan"):
+                self.assertEqual((m.video_refs, m.audio_refs), (0, 0), m.id)
 
 
 class TestedRangeTests(unittest.TestCase):
@@ -367,13 +420,13 @@ class OverrideTests(unittest.TestCase):
 
     def test_user_can_switch_to_another_model_that_fits(self):
         r = choose({"duration": 5, "subject": "product", "needs_audio": False}, 1)
-        self.assertEqual(r["model"], "grok-imagine-1.5-lite")
+        auto = r["model"]
+        self.assertNotEqual(auto, "seedance-2.5-draft")
         other = apply_override(r, "seedance-2.5-draft")
         self.assertEqual(other["model"], "seedance-2.5-draft")
         self.assertTrue(other["overridden"])
         self.assertEqual(other["cost"], 156)
-        self.assertEqual(other["auto_model"], "grok-imagine-1.5-lite")
-
+        self.assertEqual(other["auto_model"], auto)
     def test_a_model_that_cannot_do_the_job_is_refused_with_a_reason(self):
         r = choose({"duration": 15, "subject": "people"}, 5)
         with self.assertRaises(ValueError) as cm:

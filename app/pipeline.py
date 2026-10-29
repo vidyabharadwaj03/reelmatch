@@ -175,7 +175,7 @@ def _partner(key):
     return run
 
 
-ADAPTERS = {"seedance": _seedance, "wan": _wan, **{k: _partner(k) for k in ("grok", "pruna", "flux3", "kling4", "heygen", "veo")}}
+ADAPTERS = {"seedance": _seedance, "wan": _wan, **{k: _partner(k) for k in ("grok", "pruna", "flux3", "kling4", "heygen", "veo", "ltx25", "h3")}}
 
 
 def _set(job_id, **kw):

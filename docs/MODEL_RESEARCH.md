@@ -35,7 +35,14 @@ One photo of two friends holding a sign, one prompt, one run each. A first look,
 | HeyGen Video 1.0 (480p) | 86s | 30.2 | Sign shrank mid-clip and returned at the end |
 | Veo 3.1 Fast (4s) | 53s | 84.4 | Re-imagined the street and framing; sign readable |
 
-All five accepted the real-person photo and returned vertical video with sound. Billed credits matched Comfy's estimates within 1%.
+Open-weights runs on Comfy GPUs, same photo (H3 got two photos):
+
+| Model | Render time | GPU time | What it did |
+|---|---|---|---|
+| LTX-2.5 | 26s | 18 GPU-seconds | Vertical, lively, sign text stayed readable (an earlier landscape template run garbled it) |
+| MiniMax H3 | 59s | 47 GPU-seconds | Two photos became two cuts with people kept consistent; small text garbled |
+
+All five partner models accepted the real-person photo and returned vertical video with sound. Billed credits matched Comfy's estimates within 1%.
 Only Seedance has been run on five photos and 15 seconds, so it is the only model inside that range.
 
 ## What Comfy says (comfy)
