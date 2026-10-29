@@ -42,6 +42,13 @@ def friendly_error(e: Exception) -> str:
     """Turn provider and network errors into something a brand can act on."""
     name = type(e).__name__
     text = str(e).strip().splitlines()[0] if str(e).strip() else name
+    if name == "JobFailed":  # the SDK's message is generic; Comfy's own reason is on the error object
+        err = getattr(e, "error", None)
+        detail = str(getattr(err, "message", "") or getattr(err, "exception_message", "") or err or "").strip().splitlines()
+        reason = detail[0] if detail else text
+        if "unauthorized" in reason.lower() or "login" in reason.lower():
+            return "Comfy rejected the API key for this model step. Check COMFY_API_KEY and that the workspace has credits."
+        return f"The render failed on Comfy: {reason}"
     table = {
         "ContentPolicyViolation": "The model's content policy refused these photos or prompt. Try different photos or a different model.",
         "InsufficientCredits": "This workspace is out of Comfy credits. Switch to a workspace with credits or add some.",
@@ -119,7 +126,9 @@ def _seedance(job_id, prompt, images, duration, out_file, videos=(), audios=(), 
     audio_names = [upload_file(p) for p in audios]
     _set(job_id, status="rendering", message="Rendering on Comfy Cloud with Seedance 2.5 (about a minute)")
     client = Comfy()
-    job = client.run(client.workflows.from_json(build_seedance_graph(prompt, names, duration, video_names, audio_names, None if base == "reference" else base)), timeout=JOB_TIMEOUT)
+    # Partner-model steps (Seedance) need the key sent with the job, or Comfy answers "Unauthorized: Please login first".
+    graph = build_seedance_graph(prompt, names, duration, video_names, audio_names, None if base == "reference" else base)
+    job = client.run(client.workflows.from_json(graph), api_key=os.environ["COMFY_API_KEY"], timeout=JOB_TIMEOUT)
     videos = [o for o in job.outputs if (o.content_type or "").startswith("video") or o.name.endswith(".mp4")]
     if not videos:
         raise RuntimeError("The job finished but returned no video")

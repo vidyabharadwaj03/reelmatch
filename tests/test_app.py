@@ -1,7 +1,9 @@
 import base64
 import subprocess
+import os
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from app import media, server
@@ -297,6 +299,48 @@ class OverrideTests(unittest.TestCase):
     def test_quote_edit_uses_the_source_clip_length(self):
         q = server.Handler._quote(None, {"brief": {"duration": 15, "video_mode": "edit"}, "counts": {"videos": 1}, "video_seconds": 6.2})
         self.assertEqual(q["duration"], 7)
+
+
+class LiveAdapterTests(unittest.TestCase):
+    def test_seedance_sends_the_api_key_with_the_job(self):
+        # Regression: without api_key, Comfy rejects the partner-model step with "Unauthorized: Please login first".
+        from app import pipeline
+
+        calls = {}
+
+        class FakeOut:
+            content_type, name = "video/mp4", "x.mp4"
+
+            def to_file(self, path):
+                Path(path).write_bytes(b"x")
+
+        class FakeJob:
+            outputs = [FakeOut()]
+
+        class FakeClient:
+            workflows = mock.Mock()
+
+            def run(self, wf, **kw):
+                calls.update(kw)
+                return FakeJob()
+
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {"COMFY_API_KEY": "test-key"}), \
+                mock.patch("comfy_sdk.Comfy", return_value=FakeClient()), mock.patch.object(pipeline, "upload_file", return_value="a.jpg"), \
+                mock.patch.object(pipeline, "_set"):
+            pipeline._seedance("job", "prompt", [Path("a.jpg")], 5, Path(d) / "out.mp4")
+        self.assertEqual(calls.get("api_key"), "test-key")
+
+    def test_a_failed_render_shows_comfys_reason_not_a_generic_message(self):
+        from app.pipeline import friendly_error
+
+        class JobFailed(Exception):
+            pass
+
+        err = JobFailed("job abc ended failed")
+        err.error = mock.Mock(message="Unauthorized: Please login first to use this node.")
+        self.assertIn("API key", friendly_error(err))
+        err.error = mock.Mock(message="Prompt was too long")
+        self.assertIn("Prompt was too long", friendly_error(err))
 
 
 class PlannerTests(unittest.TestCase):
