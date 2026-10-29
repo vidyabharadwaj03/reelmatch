@@ -15,7 +15,33 @@ PRODUCT_BEATS = {
 }
 
 
+def _video_plan(brief: dict, mode: str) -> str:
+    dur = int(brief.get("duration", 15))
+    brand = brief.get("brand", "the brand")
+    look = [phrase("style", x) for x in brief.get("style", []) if phrase("style", x)] + [phrase("camera", c) for c in brief.get("camera", []) if phrase("camera", c)]
+    lines = [f"Vertical 9:16 {brief.get('platform', 'TikTok')} ad for {brand}."]
+    if mode == "edit":
+        lines.append("Edit the reference video. Keep its original timing, people and performance.")
+        lines.append(f"Change: {brief.get('description', '').strip().rstrip('.') or 'apply the look described below'}.")
+    else:
+        way = "forward" if mode == "extend_forward" else "backward"
+        lines.append(f"Extend the reference video {way}: continue the same scene, people, lighting and camera movement for {dur} seconds.")
+        if brief.get("description"):
+            lines.append(f"What happens next: {brief['description'].strip().rstrip('.')}.")
+    if brief.get("feel"):
+        lines.append(f"Viewers should feel: {brief['feel'].strip().rstrip('.')}.")
+    if brief.get("include"):
+        lines.append(f"Must include: {brief['include'].strip().rstrip('.')}.")
+    if brief.get("avoid"):
+        lines.append(f"Avoid: {brief['avoid'].strip().rstrip('.')}.")
+    lines.append(f"Look and camera: {', '.join(look) or 'keep the original look'}.")
+    return "\n".join(lines)
+
+
 def make_plan(brief: dict, n_images: int) -> str:
+    mode = brief.get("video_mode", "reference")
+    if mode != "reference" and brief.get("n_videos", 0):
+        return _video_plan(brief, mode)
     dur = int(brief.get("duration", 15))
     subject = brief.get("subject", "people")
     n = max(3, min(6, round(dur / 3)))

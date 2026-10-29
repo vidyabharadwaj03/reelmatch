@@ -3,6 +3,7 @@ import base64
 import json
 import os
 import shutil
+import subprocess
 import threading
 import time
 import uuid
@@ -13,9 +14,9 @@ import requests
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUTS = ROOT / "outputs"
 BASE_URL = os.environ.get("COMFY_BASE_URL", "https://cloud.comfy.org")
-MOCK = os.environ.get("COLLAB_MOCK") == "1"
+MOCK = (os.environ.get("REELMATCH_MOCK") or os.environ.get("COLLAB_MOCK")) == "1"
 MOCK_VIDEO = OUTPUTS / "soraa_promo_15s_draft.mp4"
-MAX_JOB_CREDITS = int(os.environ.get("COLLAB_MAX_CREDITS", "600"))
+MAX_JOB_CREDITS = int(os.environ.get("REELMATCH_MAX_CREDITS") or os.environ.get("COLLAB_MAX_CREDITS") or "600")
 JOB_TIMEOUT = 900
 
 JOBS: dict[str, dict] = {}
@@ -76,7 +77,7 @@ def upload_file(path: Path) -> str:
     return f"{body['subfolder']}/{body['name']}" if body.get("subfolder") else body["name"]
 
 
-def build_seedance_graph(prompt: str, image_names: list[str], duration: int, video_names=(), audio_names=()) -> dict:
+def build_seedance_graph(prompt: str, image_names: list[str], duration: int, video_names=(), audio_names=(), task_type=None) -> dict:
     """Seedance 2.5 draft reference-to-video. Same graph as the Comfy template that worked."""
     graph = {}
     node = {
@@ -84,7 +85,7 @@ def build_seedance_graph(prompt: str, image_names: list[str], duration: int, vid
         "model.duration": duration, "model.generate_audio": True, "model.output_format": "mp4",
         "model.prompt": prompt, "model.ratio": "9:16", "model.resolution": "480p",
         # "reference" is checked when the job is submitted, so a bad combination fails before any credits are spent
-        "model.task_type": "reference" if (video_names or audio_names) else "auto",
+        "model.task_type": task_type or ("reference" if (video_names or audio_names) else "auto"),
         "seed": 0, "watermark": False,
     }
     for i, name in enumerate(image_names, start=1):
@@ -99,15 +100,18 @@ def build_seedance_graph(prompt: str, image_names: list[str], duration: int, vid
         node[f"model.reference_audios.audio_{i}"] = [str(820 + i), 0]
     graph["789"] = {"_meta": {"title": "Seedance 2.5 draft"}, "class_type": "ByteDance2ReferenceNodeV2", "inputs": node}
     graph["776"] = {"_meta": {"title": "Save video"}, "class_type": "SaveVideo", "inputs": {
-        "codec": "auto", "filename_prefix": "video/collab_studio", "format": "auto", "format.codec": "auto", "video": ["789", 0]}}
+        "codec": "auto", "filename_prefix": "video/reelmatch", "format": "auto", "format.codec": "auto", "video": ["789", 0]}}
     graph["771"] = {"_meta": {"title": "Save draft task id"}, "class_type": "SaveText", "inputs": {
-        "filename_prefix": "collab_studio_draft_task", "format": "txt", "text": ["789", 1]}}
+        "filename_prefix": "reelmatch_draft_task", "format": "txt", "text": ["789", 1]}}
     return graph
 
 
-def _seedance(job_id, prompt, images, duration, out_file, videos=(), audios=()):
+def _seedance(job_id, prompt, images, duration, out_file, videos=(), audios=(), mode="reference"):
     from comfy_sdk import Comfy
 
+    base = "extend" if mode.startswith("extend") else mode
+    if base != "reference" and not videos:
+        raise RuntimeError("Add a reference video to extend or edit it.")
     extra = f" and {len(videos) + len(audios)} reference clip(s)" if (videos or audios) else ""
     _set(job_id, status="uploading", message=f"Uploading {len(images)} photos{extra}")
     names = [upload_file(p) for p in images]
@@ -115,14 +119,14 @@ def _seedance(job_id, prompt, images, duration, out_file, videos=(), audios=()):
     audio_names = [upload_file(p) for p in audios]
     _set(job_id, status="rendering", message="Rendering on Comfy Cloud with Seedance 2.5 (about a minute)")
     client = Comfy()
-    job = client.run(client.workflows.from_json(build_seedance_graph(prompt, names, duration, video_names, audio_names)), timeout=JOB_TIMEOUT)
+    job = client.run(client.workflows.from_json(build_seedance_graph(prompt, names, duration, video_names, audio_names, None if base == "reference" else base)), timeout=JOB_TIMEOUT)
     videos = [o for o in job.outputs if (o.content_type or "").startswith("video") or o.name.endswith(".mp4")]
     if not videos:
         raise RuntimeError("The job finished but returned no video")
     videos[0].to_file(out_file)
 
 
-def _wan(job_id, prompt, images, duration, out_file, videos=(), audios=()):
+def _wan(job_id, prompt, images, duration, out_file, videos=(), audios=(), mode="reference"):
     from comfy_sdk import Comfy
 
     _set(job_id, status="rendering", message="Rendering on Comfy Cloud with Wan 2.7 (about 30 seconds)")
@@ -149,24 +153,44 @@ def _set(job_id, **kw):
     (d / "job.json").write_text(json.dumps(snap, indent=2))
 
 
-def _run(job_id: str, model, prompt: str, images: list[Path], duration: int, videos=(), audios=(), soundtrack=None):
+def mock_video_path() -> Path:
+    """The saved Soraa clip when we have it, otherwise a generated test clip so mock mode works on a fresh checkout."""
+    if MOCK_VIDEO.exists():
+        return MOCK_VIDEO
+    sample = OUTPUTS / "_mock_sample.mp4"
+    if not sample.exists():
+        from .media import ffmpeg_exe
+
+        subprocess.run([ffmpeg_exe(), "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=480x854:rate=24",
+                        "-f", "lavfi", "-i", "sine=frequency=220:duration=15", "-t", "15", "-pix_fmt", "yuv420p", "-shortest", str(sample)], check=True)
+    return sample
+
+
+def _run(job_id: str, model, prompt: str, images: list[Path], duration: int, videos=(), audios=(), soundtrack=None, voice=None, mode="reference"):
+    from . import media
+
     out = OUTPUTS / job_id / "video.mp4"
     try:
         if MOCK:
             _set(job_id, status="rendering", message="Mock mode: replaying a saved clip")
             time.sleep(4)
-            shutil.copy(MOCK_VIDEO, out)
+            shutil.copy(mock_video_path(), out)
         else:
             load_env()
             if not os.environ.get("COMFY_API_KEY"):
                 raise RuntimeError("No Comfy API key found. Add COMFY_API_KEY to .env.")
-            ADAPTERS[model.adapter](job_id, prompt, images, duration, out, videos, audios)
-        if soundtrack:
-            from .media import mux_soundtrack
-
-            _set(job_id, status="rendering", message="Mixing your music into the video")
+            ADAPTERS[model.adapter](job_id, prompt, images, duration, out, videos, audios, mode)
+        if mode.startswith("extend") and videos:
+            _set(job_id, status="rendering", message="Joining your clip and the new footage")
+            joined = out.with_name("video_joined.mp4")
+            first, second = (videos[0], out) if mode == "extend_forward" else (out, videos[0])
+            media.concat_clips(first, second, joined, size_from=out)
+            joined.replace(out)
+        if soundtrack or voice:
+            _set(job_id, status="rendering", message="Mixing your voiceover and music" if (soundtrack and voice) else
+                 "Mixing in your voiceover" if voice else "Mixing in your music")
             mixed = out.with_name("video_mixed.mp4")
-            mux_soundtrack(out, soundtrack, mixed)
+            media.mix_audio(out, mixed, music=soundtrack, voice=voice)
             mixed.replace(out)
         (OUTPUTS / job_id / "prompt.txt").write_text(prompt)
         spent = model.cost(duration) or 0
@@ -178,15 +202,15 @@ def _run(job_id: str, model, prompt: str, images: list[Path], duration: int, vid
         _set(job_id, status="error", message=friendly_error(e))
 
 
-def start_job(model, prompt: str, images: list[Path], duration: int, videos=(), audios=(), soundtrack=None) -> str:
+def start_job(model, prompt: str, images: list[Path], duration: int, videos=(), audios=(), soundtrack=None, voice=None, mode="reference") -> str:
     job_id = uuid.uuid4().hex[:10]
     with _lock:
         JOBS[job_id] = {"id": job_id, "status": "queued", "message": "Queued", "video": None, "model": model.label,
                         "duration": duration, "photos": len(images), "videos": len(videos), "music": bool(soundtrack),
-                        "credits": model.cost(duration), "mock": MOCK,
+                        "voice": bool(voice), "mode": mode, "credits": model.cost(duration), "mock": MOCK,
                         "created": int(time.time())}
     _set(job_id)
-    threading.Thread(target=_run, args=(job_id, model, prompt, images, duration, videos, audios, soundtrack), daemon=True).start()
+    threading.Thread(target=_run, args=(job_id, model, prompt, images, duration, videos, audios, soundtrack, voice, mode), daemon=True).start()
     return job_id
 
 

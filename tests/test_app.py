@@ -6,6 +6,7 @@ from pathlib import Path
 
 from app import media, server
 from app.planner import make_plan
+from app.script import make_scripts, word_budget
 from app.registry import choose
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
@@ -130,6 +131,125 @@ class MediaInputTests(unittest.TestCase):
             banner = subprocess.run([ff, "-hide_banner", "-i", str(out)], capture_output=True, text=True).stderr
             self.assertIn("Audio:", banner)
             self.assertIn("Video:", banner)
+
+
+def _clips(d: Path):
+    """Tiny synthetic media: an 8s clip with sound, an 8s silent clip, a 1s music loop and a 2s voice."""
+    ff = media.ffmpeg_exe()
+    run = lambda *a: subprocess.run([ff, "-loglevel", "error", "-y", *a], check=True)
+    run("-f", "lavfi", "-i", "testsrc=size=160x284:rate=24", "-f", "lavfi", "-i", "sine=frequency=300:duration=8", "-t", "8", "-pix_fmt", "yuv420p", "-shortest", str(d / "sound.mp4"))
+    run("-f", "lavfi", "-i", "testsrc2=size=320x568:rate=30", "-t", "8", "-pix_fmt", "yuv420p", str(d / "silent.mp4"))
+    run("-f", "lavfi", "-i", "sine=frequency=500:duration=1", str(d / "music.wav"))
+    run("-f", "lavfi", "-i", "sine=frequency=900:duration=2", str(d / "voice.wav"))
+
+
+class AudioMixTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.d = Path(self._tmp.name)
+        _clips(self.d)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _assert_full_audio(self, out, video):
+        self.assertAlmostEqual(media.audio_seconds(out), media.duration_seconds(video), delta=0.3)
+
+    def test_music_keeps_playing_after_a_short_voice_ends(self):
+        # Regression: the ducking filter used to end with the voice and cut the music off at 2.4s.
+        out = self.d / "o.mp4"
+        media.mix_audio(self.d / "sound.mp4", out, music=self.d / "music.wav", voice=self.d / "voice.wav")
+        self._assert_full_audio(out, self.d / "sound.mp4")
+
+    def test_music_only_spans_the_whole_video(self):
+        out = self.d / "o.mp4"
+        media.mix_audio(self.d / "silent.mp4", out, music=self.d / "music.wav")
+        self._assert_full_audio(out, self.d / "silent.mp4")
+
+    def test_voice_over_the_videos_own_sound_spans_the_whole_video(self):
+        out = self.d / "o.mp4"
+        media.mix_audio(self.d / "sound.mp4", out, voice=self.d / "voice.wav")
+        self._assert_full_audio(out, self.d / "sound.mp4")
+
+    def test_voice_over_a_silent_video_spans_the_whole_video(self):
+        out = self.d / "o.mp4"
+        media.mix_audio(self.d / "silent.mp4", out, voice=self.d / "voice.wav")
+        self._assert_full_audio(out, self.d / "silent.mp4")
+
+    def test_mix_needs_something_to_mix(self):
+        with self.assertRaises(ValueError):
+            media.mix_audio(self.d / "sound.mp4", self.d / "o.mp4")
+
+    def test_joining_a_silent_and_a_sound_clip_keeps_sound_and_length(self):
+        out = self.d / "joined.mp4"
+        media.concat_clips(self.d / "silent.mp4", self.d / "sound.mp4", out, size_from=self.d / "sound.mp4")
+        self.assertAlmostEqual(media.duration_seconds(out), 16.0, delta=0.2)
+        self.assertEqual(media.video_size(out), (160, 284))
+        self.assertAlmostEqual(media.audio_seconds(out), 16.0, delta=0.3)
+
+    def test_trim_cuts_long_clips_and_leaves_short_ones(self):
+        cut = media.trim(self.d / "sound.mp4", self.d / "cut.mp4", 3.0)
+        self.assertLess(media.duration_seconds(cut), 4.2)
+        self.assertEqual(media.trim(self.d / "sound.mp4", self.d / "x.mp4", 15.0), self.d / "sound.mp4")
+
+
+class ScriptTests(unittest.TestCase):
+    BRIEF = {"brand": "Soraa", "description": "A new way to find brand partnerships. Second sentence.", "message": "You'd stop scrolling for us.",
+             "cta": "follow", "audience": "genz", "goal": "awareness"}
+
+    def test_every_script_fits_the_ad_length(self):
+        for d in (5, 8, 15, 30):
+            r = make_scripts({**self.BRIEF, "duration": d})
+            self.assertEqual(r["budget_words"], word_budget(d))
+            for s in r["scripts"]:
+                self.assertLessEqual(s["words"], r["budget_words"] + 2, (d, s["title"]))
+
+    def test_scripts_keep_the_message_and_call_to_action(self):
+        for s in make_scripts({**self.BRIEF, "duration": 15})["scripts"]:
+            self.assertIn("stop scrolling", s["text"])
+            self.assertIn("Follow us", s["text"])
+
+    def test_scripts_work_with_a_nearly_empty_brief(self):
+        r = make_scripts({"duration": 8})
+        self.assertEqual(len(r["scripts"]), 3)
+        self.assertTrue(all(s["text"].strip() for s in r["scripts"]))
+
+    def test_longer_ads_get_bigger_word_budgets(self):
+        self.assertLess(word_budget(8), word_budget(15))
+        self.assertLess(word_budget(15), word_budget(30))
+
+
+class ExtendEditTests(unittest.TestCase):
+    def test_only_seedance_can_extend_or_edit(self):
+        for mode in ("extend_forward", "extend_backward", "edit"):
+            r = choose({"duration": 8, "n_videos": 1, "video_mode": mode}, 0)
+            self.assertEqual(r["model"], "seedance-2.5-draft", mode)
+            for x in r["ranking"]:
+                if x["id"] != "seedance-2.5-draft":
+                    self.assertFalse(x["eligible"], (mode, x["id"]))
+
+    def test_extend_plan_says_which_way(self):
+        fwd = make_plan({"duration": 8, "n_videos": 1, "video_mode": "extend_forward", "description": "they walk in"}, 0)
+        back = make_plan({"duration": 8, "n_videos": 1, "video_mode": "extend_backward"}, 0)
+        self.assertIn("forward", fwd)
+        self.assertIn("they walk in", fwd)
+        self.assertIn("backward", back)
+
+    def test_edit_plan_keeps_timing_and_states_the_change(self):
+        plan = make_plan({"duration": 8, "n_videos": 1, "video_mode": "edit", "description": "make it rain"}, 0)
+        self.assertIn("original timing", plan)
+        self.assertIn("make it rain", plan)
+
+    def test_without_a_video_the_normal_plan_is_used(self):
+        self.assertIn("Shot 1", make_plan({"duration": 8, "video_mode": "extend_forward"}, 2))
+
+    def test_voiceover_counts_as_sound_so_silent_models_still_fit(self):
+        r = choose({"duration": 5, "subject": "product", "n_voice": 1, "needs_audio": True}, 1)
+        wan = next(x for x in r["ranking"] if x["id"] == "wan-2.7-i2v")
+        self.assertTrue(wan["eligible"])
+
+    def test_video_mode_falls_back_to_reference(self):
+        self.assertEqual(server.clean_brief({"duration": 8, "video_mode": "nonsense"})["video_mode"], "reference")
 
 
 class PlannerTests(unittest.TestCase):

@@ -45,7 +45,7 @@ Treat any single refusal as route-specific, not as a model-wide rule.
 - Seedance 2.5 reference-to-video: up to 20 images, 6 video clips and 6 audio clips (Comfy template description). The node spec shows `model.reference_videos.video_N` and `model.reference_audios.audio_N` slots, and a `task_type` of reference, edit or extend.
   Edit and extend are not used yet, but they would let a brand change or lengthen a clip it already has.
 - MiniMax H3 and HeyGen reference-to-video: up to 3 videos and 3 audio clips (Comfy template descriptions).
-- Audio references steer rhythm and sound. They do not guarantee a specific song appears, so Collab Studio mixes the brand's own track into the finished video itself.
+- Audio references steer rhythm and sound. They do not guarantee a specific song appears, so Reelmatch mixes the brand's own track into the finished video itself.
 - Not yet checked: the size, length and resolution limits Seedance puts on reference videos.
 
 ## MiniMax H3 and the Open Weights Only prize

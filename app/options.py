@@ -26,7 +26,10 @@ AUDIENCE = [("everyone", "Everyone", "a broad audience"), ("genz", "Gen Z", "Gen
 CTA = [("none", "No call to action", ""), ("shop", "Shop now", "Shop now"), ("learn", "Learn more", "Learn more"),
        ("follow", "Follow us", "Follow us"), ("visit", "Visit us", "Visit us"), ("book", "Book now", "Book now")]
 
-GROUPS = {"subject": SUBJECT, "goal": GOAL, "platform": PLATFORM, "length": LENGTH, "style": STYLE, "setting": SETTING,
+VIDEO_MODE = [("reference", "Use as a style reference", ""), ("extend_forward", "Extend it forward", ""),
+              ("extend_backward", "Extend it backward", ""), ("edit", "Edit it", "")]
+
+GROUPS = {"video_mode": VIDEO_MODE, "subject": SUBJECT, "goal": GOAL, "platform": PLATFORM, "length": LENGTH, "style": STYLE, "setting": SETTING,
           "camera": CAMERA, "audio": AUDIO, "budget": BUDGET, "audience": AUDIENCE, "cta": CTA}
 
 

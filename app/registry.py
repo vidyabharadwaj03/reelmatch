@@ -31,6 +31,7 @@ class VideoModel:
     evidence: tuple = field(default_factory=tuple)  # (label, text, url)
     video_refs: int = 0  # reference videos it accepts
     audio_refs: int = 0  # reference audio clips it accepts
+    video_modes: tuple = ()  # what it can do with a reference video: reference, extend, edit
 
     def cost(self, duration: int) -> int | None:
         if self.id == "seedance-2.5-draft":
@@ -112,13 +113,15 @@ MODELS = [
                price_note="About 352 credits for a 5s run (Comfy estimator).",
                evidence=(("comfy", "Needs one liveness verification per real-person portrait", SEEDANCE_DOCS),)),
 ]
-# Reference video and audio inputs, from Comfy's template descriptions and the Seedance node spec.
+# Reference video and audio inputs. Comfy's Seedance 2.5 template says 6 clips each, third-party docs for Seedance 2.0 say 3.
+# We cap at 3 until confirmed. Edit and extend come from the Seedance node's task_type.
 _MEDIA = {
-    "seedance-2.5-draft": (6, 6, ("comfy", "Reference-to-video template takes up to 20 images, 6 video clips and 6 audio clips; the node can also edit or extend a clip", "")),
-    "minimax-h3-r2v": (3, 3, ("comfy", "Template takes up to 3 videos and 3 audio clips alongside the images", "")),
-    "heygen-video-1-r2v": (3, 3, ("comfy", "Template takes up to 3 videos and 3 audio clips alongside the images", "")),
+    "seedance-2.5-draft": (3, 3, ("reference", "extend", "edit"),
+                           ("comfy", "Reference-to-video takes images, video clips and audio clips; node task types are reference, edit and extend. Comfy's template says 6 clips each, other docs say 3, so we send at most 3", "")),
+    "minimax-h3-r2v": (3, 3, ("reference",), ("comfy", "Template takes up to 3 videos and 3 audio clips alongside the images", "")),
+    "heygen-video-1-r2v": (3, 3, ("reference",), ("comfy", "Template takes up to 3 videos and 3 audio clips alongside the images", "")),
 }
-MODELS = [replace(m, video_refs=_MEDIA[m.id][0], audio_refs=_MEDIA[m.id][1], evidence=m.evidence + (_MEDIA[m.id][2],))
+MODELS = [replace(m, video_refs=_MEDIA[m.id][0], audio_refs=_MEDIA[m.id][1], video_modes=_MEDIA[m.id][2], evidence=m.evidence + (_MEDIA[m.id][3],))
           if m.id in _MEDIA else m for m in MODELS]
 BY_ID = {m.id: m for m in MODELS}
 
@@ -143,17 +146,25 @@ def _checks(m: VideoModel, brief: dict, n_images: int) -> tuple[list[dict], bool
         fits = m.min_s <= duration <= m.max_s
         add(fits, f"Length {duration}s fits its {m.min_s}-{m.max_s}s range" if fits
             else f"Length {duration}s is outside its {m.min_s}-{m.max_s}s range")
-    if m.max_refs is not None:
+    if m.max_refs is not None and n_images > 0:
         if n_images <= m.max_refs:
             add(True, f"Uses all {n_images} photo{'s' if n_images != 1 else ''}")
         else:
             add(False, f"Takes {m.max_refs} photo, you gave {n_images}: the rest would be ignored", hard=False)
-    n_videos, n_audio = int(brief.get("n_videos", 0)), int(brief.get("n_audio", 0))
-    mixing = n_audio > 0 and brief.get("soundtrack", True)
-    if mixing:
+    n_videos, n_audio, n_voice = int(brief.get("n_videos", 0)), int(brief.get("n_audio", 0)), int(brief.get("n_voice", 0))
+    mixing = (n_audio > 0 and brief.get("soundtrack", True)) or n_voice > 0
+    if n_voice:
+        add(True, "Your voiceover is mixed in after rendering", hard=False)
+    if n_audio and brief.get("soundtrack", True):
         add(True, "Your music is mixed in as the soundtrack after rendering")
+    if mixing:
+        pass
     elif brief.get("needs_audio", True):
         add(m.audio, "Generates sound" if m.audio else "No generated sound, and the brief needs it")
+    vmode = brief.get("video_mode", "reference")
+    base = "extend" if vmode.startswith("extend") else vmode
+    if n_videos and base != "reference":
+        add(base in m.video_modes, f"Can {base} your video" if base in m.video_modes else f"Cannot {base} a video")
     if n_videos:
         if m.video_refs >= n_videos:
             add(True, f"Takes your reference video{'s' if n_videos > 1 else ''} (up to {m.video_refs})")

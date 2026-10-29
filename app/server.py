@@ -1,8 +1,9 @@
-"""Local web server for Collab Studio. Standard library only. Run: python -m app.server"""
+"""Local web server for Reelmatch. Standard library only. Run: python -m app.server"""
 import base64
 import binascii
 import hashlib
 import json
+import math
 import mimetypes
 import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -11,6 +12,7 @@ from pathlib import Path
 from . import pipeline
 from . import media, options
 from .planner import make_plan
+from .script import make_scripts
 from .registry import BY_ID, choose
 
 STATIC = Path(__file__).parent / "static"
@@ -92,8 +94,8 @@ def save_media(items: list[dict], kind: str) -> list[Path]:
     return paths
 
 
-def gather_media(body: dict) -> tuple[list[Path], list[Path]]:
-    return save_media(body.get("videos"), "video"), save_media(body.get("audios"), "audio")
+def gather_media(body: dict) -> tuple[list[Path], list[Path], list[Path]]:
+    return save_media(body.get("videos"), "video"), save_media(body.get("audios"), "audio"), save_media(body.get("voices"), "audio")[:1]
 
 
 def gather_images(body: dict) -> list[Path]:
@@ -136,6 +138,7 @@ def clean_brief(raw: dict) -> dict:
         "include": t("include", 200), "avoid": t("avoid", 200),
         "needs_audio": bool(raw.get("needs_audio", True)), "budget": budget,
         "open_weights_only": bool(raw.get("open_weights_only")), "soundtrack": bool(raw.get("soundtrack", True)),
+        "video_mode": one("video_mode", "reference"),
         "consent": bool(raw.get("consent")), "verified_likeness": bool(raw.get("verified_likeness")) and subject != "product",
     }
 
@@ -237,42 +240,63 @@ class Handler(BaseHTTPRequestHandler):
     def _post(self, body):
         if self.path == "/api/photos":
             return self._json({"images": register(gather_images(body))})
+        if self.path == "/api/script":
+            b = clean_brief(body.get("brief") or {})
+            if b["video_mode"] != "reference":
+                b["description"] = ""  # in extend or edit mode the description is about the clip, not the brand
+            return self._json(make_scripts(b))
+        if self.path not in ("/api/plan", "/api/generate"):
+            return self._json({"error": "not found"}, 404)
+
+        brief = clean_brief(body.get("brief") or {})
+        images = gather_images(body)
+        videos, audios, voices = gather_media(body)
+        mode = brief["video_mode"]
+        if mode != "reference" and not videos:
+            raise BadRequest("Add a reference video to extend or edit it.")
+        warnings, trimmed = [], []
+        for v in videos:
+            length = media.duration_seconds(v)
+            if length > 15.05:
+                warnings.append(f"{v.name} is {length:.0f}s, so only its first 15 seconds are used.")
+            trimmed.append(media.trim(v, v.with_name(v.stem + "_trim.mp4")))
+        videos = trimmed
+        if mode == "edit":  # the edited clip keeps the source's length, so that is what we pay for
+            brief["duration"] = min(30, max(4, math.ceil(media.duration_seconds(videos[0]))))
+        brief.update(n_videos=len(videos), n_audio=len(audios), n_voice=len(voices))
+        choice = choose(brief, len(images))
+        if voices:
+            final = brief["duration"] + (media.duration_seconds(videos[0]) if mode.startswith("extend") else 0)
+            vlen = media.duration_seconds(voices[0])
+            if vlen > final + 0.5:
+                warnings.append(f"Your voiceover is {vlen:.0f}s but the ad is {final:.0f}s, so the end will be cut. Shorten the script or pick a longer ad.")
+
         if self.path == "/api/plan":
-            brief = clean_brief(body.get("brief") or {})
-            images = gather_images(body)
-            videos, audios = gather_media(body)
-            brief.update(n_videos=len(videos), n_audio=len(audios))
-            choice = choose(brief, len(images))
             return self._json({"plan": make_plan(brief, len(images)), "model": choice, "n_images": len(images),
-                               "images": register(images), "credits": choice["cost"], "brief": brief})
-        if self.path == "/api/generate":
-            brief = clean_brief(body.get("brief") or {})
-            if not brief["consent"]:
-                raise BadRequest("Confirm you have the right to use these photos.")
-            images = gather_images(body)
-            if not images:
-                raise BadRequest("Add at least one photo.")
-            videos, audios = gather_media(body)
-            brief.update(n_videos=len(videos), n_audio=len(audios))
-            choice = choose(brief, len(images))  # decided here, never trusted from the browser
-            if not choice["model"]:
-                raise BadRequest("No model fits this brief. Loosen the length, sound, budget or likeness options.")
-            model = BY_ID[choice["model"]]
-            cost = choice["cost"]
-            if body.get("confirm_credits") != cost:
-                raise BadRequest("Credit confirmation does not match the estimate.")
-            if cost > pipeline.MAX_JOB_CREDITS:
-                raise BadRequest(f"That job (about {cost} credits) is over the {pipeline.MAX_JOB_CREDITS}-credit safety limit.")
-            plan = str(body.get("plan", "")).strip()[:6000]
-            if not plan:
-                raise BadRequest("The shot plan is empty.")
-            if model.max_refs:
-                images = images[:model.max_refs]
-            videos = videos[:model.video_refs]
-            soundtrack = audios[0] if audios and brief["soundtrack"] else None
-            refs_audio = audios[:model.audio_refs]
-            return self._json({"job": pipeline.start_job(model, plan, images, brief["duration"], videos, refs_audio, soundtrack)})
-        self._json({"error": "not found"}, 404)
+                               "images": register(images), "credits": choice["cost"], "brief": brief, "warnings": warnings})
+
+        if not brief["consent"]:
+            raise BadRequest("Confirm you have the right to use these photos.")
+        if not images and mode == "reference":
+            raise BadRequest("Add at least one photo.")
+        if not choice["model"]:
+            raise BadRequest("No model fits this brief. Loosen the length, sound, budget or likeness options.")
+        model = BY_ID[choice["model"]]
+        cost = choice["cost"]
+        if body.get("confirm_credits") != cost:
+            raise BadRequest("Credit confirmation does not match the estimate.")
+        if cost > pipeline.MAX_JOB_CREDITS:
+            raise BadRequest(f"That job (about {cost} credits) is over the {pipeline.MAX_JOB_CREDITS}-credit safety limit.")
+        plan = str(body.get("plan", "")).strip()[:6000]
+        if not plan:
+            raise BadRequest("The shot plan is empty.")
+        if model.max_refs:
+            images = images[:model.max_refs]
+        ref_audio = [media.trim(a, a.with_name(a.stem + "_trim" + a.suffix)) for a in audios[:model.audio_refs]]
+        soundtrack = audios[0] if audios and brief["soundtrack"] else None
+        job = pipeline.start_job(model, plan, images, brief["duration"], videos[:model.video_refs], ref_audio, soundtrack,
+                                 voices[0] if voices else None, mode)
+        return self._json({"job": job})
 
 
 def main(port=8000):
@@ -280,7 +304,7 @@ def main(port=8000):
     pipeline.load_history()
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     mode = "MOCK (no credits spent)" if pipeline.MOCK else "LIVE (spends Comfy credits)"
-    print(f"Collab Studio on http://localhost:{port}  [{mode}]")
+    print(f"Reelmatch on http://localhost:{port}  [{mode}]")
     srv.serve_forever()
 
 
