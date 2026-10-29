@@ -7,7 +7,7 @@ from pathlib import Path
 from app import media, server
 from app.planner import make_plan
 from app.script import make_scripts, word_budget
-from app.registry import choose
+from app.registry import apply_override, choose
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
 JPG = b"\xff\xd8\xff\xe0" + b"\x00" * 32
@@ -250,6 +250,53 @@ class ExtendEditTests(unittest.TestCase):
 
     def test_video_mode_falls_back_to_reference(self):
         self.assertEqual(server.clean_brief({"duration": 8, "video_mode": "nonsense"})["video_mode"], "reference")
+
+
+class OverrideTests(unittest.TestCase):
+    def test_auto_pick_is_remembered(self):
+        r = choose({"duration": 5, "subject": "product", "needs_audio": False}, 1)
+        self.assertEqual(r["auto_model"], r["model"])
+        self.assertFalse(r["overridden"])
+
+    def test_user_can_switch_to_another_model_that_fits(self):
+        r = choose({"duration": 5, "subject": "product", "needs_audio": False}, 1)
+        self.assertEqual(r["model"], "wan-2.7-i2v")
+        other = apply_override(r, "seedance-2.5-draft")
+        self.assertEqual(other["model"], "seedance-2.5-draft")
+        self.assertTrue(other["overridden"])
+        self.assertEqual(other["cost"], 156)
+        self.assertEqual(other["auto_model"], "wan-2.7-i2v")
+
+    def test_a_model_that_cannot_do_the_job_is_refused_with_a_reason(self):
+        r = choose({"duration": 15, "subject": "people"}, 5)
+        with self.assertRaises(ValueError) as cm:
+            apply_override(r, "wan-2.7-i2v")
+        self.assertIn("Wan 2.7", str(cm.exception))
+
+    def test_unwired_models_cannot_be_picked(self):
+        r = choose({"duration": 15}, 3)
+        with self.assertRaises(ValueError):
+            apply_override(r, "veo-3.1")
+
+    def test_unknown_or_empty_override_changes_nothing(self):
+        r = choose({"duration": 15}, 3)
+        self.assertIs(apply_override(r, None), r)
+        with self.assertRaises(ValueError):
+            apply_override(r, "nope")
+
+    def test_quote_answers_from_counts_alone(self):
+        q = server.Handler._quote(None, {"brief": {"duration": 8, "subject": "product"}, "counts": {"images": 3}})
+        self.assertEqual(q["model"]["model"], "seedance-2.5-draft")
+        self.assertEqual(q["credits"], 250)
+
+    def test_quote_ignores_a_stale_override(self):
+        q = server.Handler._quote(None, {"brief": {"duration": 15}, "counts": {"images": 5}, "model_id": "wan-2.7-i2v"})
+        self.assertTrue(q["override_ignored"])
+        self.assertEqual(q["model"]["model"], "seedance-2.5-draft")
+
+    def test_quote_edit_uses_the_source_clip_length(self):
+        q = server.Handler._quote(None, {"brief": {"duration": 15, "video_mode": "edit"}, "counts": {"videos": 1}, "video_seconds": 6.2})
+        self.assertEqual(q["duration"], 7)
 
 
 class PlannerTests(unittest.TestCase):

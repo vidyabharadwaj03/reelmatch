@@ -10,160 +10,159 @@
 <style>
   /* Colors and type follow Soraa's own site: plum, cream, lime, Syne headlines, Inter body. */
   :root {
-    --plum: #290d17; --plum-2: #411521; --plum-3: #5a0f18; --cream: #fff4de; --bone: #f2eae7; --lime: #d8f36a; --lime-2: #e8ff99;
-    --pink: #f6a9c4; --rose: #d3505b; --white: #fff; --line: #e4dbd6; --muted: #6b5a62; --faint: #8a7a82; --ok: #1f7a4d;
-    --on-plum: #dbc3c8; --head: "Syne", "Inter", system-ui, sans-serif; --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --plum: #290d17; --plum-2: #411521; --cream: #fff4de; --bone: #f2eae7; --lime: #d8f36a; --lime-2: #e8ff99;
+    --rose: #d3505b; --white: #fff; --line: #e4dbd6; --muted: #6b5a62; --faint: #8a7a82; --ok: #1f7a4d; --on-plum: #dbc3c8;
+    --head: "Syne", "Inter", system-ui, sans-serif; --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
-  body { margin: 0; background: var(--bone); color: var(--plum); font: 15px/1.55 var(--body); -webkit-font-smoothing: antialiased; }
+  body { margin: 0; background: var(--bone); color: var(--plum); font: 15px/1.55 var(--body); -webkit-font-smoothing: antialiased; padding-bottom: 96px; }
   h1, h2, h3, h4 { font-family: var(--head); margin: 0; letter-spacing: -0.04em; }
   button, input, select, textarea { font: inherit; color: inherit; }
   .hidden { display: none !important; }
   .ic { width: 1.15em; height: 1.15em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; vertical-align: -0.2em; }
 
-  /* ---------- hero ---------- */
+  /* ---------- hero (kept short) ---------- */
   .hero { background: var(--plum); color: var(--cream); position: relative; overflow: hidden; }
   .hero::before { content: ""; position: absolute; inset: -20%; opacity: .07; pointer-events: none;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.6'/></svg>"); }
-  .hero-in { position: relative; max-width: 1180px; margin: 0 auto; padding: 28px 24px 64px; }
-  .nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 44px; }
-  .logo { font-family: var(--head); font-weight: 800; font-size: 24px; letter-spacing: -0.05em; }
-  .logo span { color: var(--lime); }
+  .hero-in { position: relative; max-width: 960px; margin: 0 auto; padding: 22px 24px 36px; }
+  .nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
+  .logo { font-family: var(--head); font-weight: 800; font-size: 22px; letter-spacing: -0.05em; } .logo span { color: var(--lime); }
   .purse { display: flex; gap: 8px; flex-wrap: wrap; }
   .pill { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; background: rgba(255, 244, 222, .1); color: var(--cream); border: 1px solid rgba(255, 244, 222, .18); }
-  .pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--lime); }
-  .pill.mock i { background: #ffd36b; } .pill.warn i { background: var(--rose); }
-  .hero-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 32px; align-items: center; }
-  @media (max-width: 860px) { .hero-grid { grid-template-columns: 1fr; } .collage { display: none; } }
-  .eyebrow { display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 22px; }
-  .eyebrow i { width: 8px; height: 8px; border-radius: 50%; background: var(--lime); }
-  .hero h1 { font-size: clamp(38px, 4.6vw, 62px); line-height: 1.04; letter-spacing: -0.065em; font-weight: 800; }
-  .hero h1 span { color: var(--lime); }
-  .intro { max-width: 470px; margin-top: 22px; color: var(--on-plum); font-size: 16px; line-height: 1.75; }
-  .collage { position: relative; height: 330px; }
-  .pol { position: absolute; background: var(--cream); padding: 8px 8px 34px; box-shadow: 0 16px 45px rgba(16, 2, 12, .45); }
-  .pol img { display: block; width: 100%; height: 100%; object-fit: cover; background: #a03c3f; }
-  .pol .ph-empty { width: 100%; height: 100%; background: #6a2a36; display: grid; place-items: center; color: var(--cream); }
-  .pol figcaption { position: absolute; bottom: 9px; left: 10px; right: 10px; font: 700 11px/1 var(--head); color: var(--plum-2); letter-spacing: -0.02em; }
-  .pol.a { width: 58%; height: 300px; left: 4%; top: 6px; transform: rotate(-6deg); }
-  .pol.b { width: 40%; height: 200px; right: 2%; bottom: 0; transform: rotate(8deg); }
-  .sticker { position: absolute; top: -4px; right: 6px; z-index: 2; width: 112px; height: 112px; background: var(--lime); color: var(--plum); border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font: 700 11px/1.35 var(--head); transform: rotate(13deg); }
-  .sticker .ic { width: 26px; height: 26px; margin-top: 4px; }
-  .marquee { position: relative; background: var(--lime); color: var(--plum); overflow: hidden; white-space: nowrap; border-top: 1px solid rgba(41, 13, 23, .15); }
-  .marquee div { display: inline-block; padding: 9px 0; font: 700 12px/1 var(--head); letter-spacing: .08em; text-transform: uppercase; animation: marq 38s linear infinite; }
-  .marquee span { margin: 0 18px; }
-  @keyframes marq { to { transform: translateX(-50%); } }
+  .pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--lime); } .pill.mock i { background: #ffd36b; } .pill.warn i { background: var(--rose); }
+  .hero-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 24px; align-items: center; }
+  @media (max-width: 760px) { .hero-grid { grid-template-columns: 1fr; } .collage { display: none; } }
+  .hero h1 { font-size: clamp(34px, 4.2vw, 52px); line-height: 1.05; letter-spacing: -0.065em; font-weight: 800; } .hero h1 span { color: var(--lime); }
+  .intro { max-width: 440px; margin: 16px 0 0; color: var(--on-plum); font-size: 15.5px; line-height: 1.7; }
+  .collage { position: relative; height: 210px; }
+  .pol { position: absolute; background: var(--cream); padding: 6px 6px 24px; box-shadow: 0 14px 36px rgba(16, 2, 12, .45); margin: 0; }
+  .pol img, .pol .ph-empty { display: block; width: 100%; height: 100%; object-fit: cover; background: #6a2a36; }
+  .pol .ph-empty { display: grid; place-items: center; color: var(--cream); }
+  .pol figcaption { position: absolute; bottom: 6px; left: 8px; font: 700 10px/1 var(--head); color: var(--plum-2); }
+  .pol.a { width: 56%; height: 190px; left: 4%; top: 6px; transform: rotate(-6deg); } .pol.b { width: 38%; height: 130px; right: 2%; bottom: 0; transform: rotate(8deg); }
+  .sticker { position: absolute; top: -8px; right: 4px; z-index: 2; width: 84px; height: 84px; background: var(--lime); color: var(--plum); border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font: 700 10px/1.3 var(--head); transform: rotate(13deg); }
+  .sticker .ic { width: 18px; height: 18px; }
+  .marquee { background: var(--lime); color: var(--plum); overflow: hidden; white-space: nowrap; }
+  .marquee div { display: inline-block; padding: 8px 0; font: 700 11px/1 var(--head); letter-spacing: .08em; text-transform: uppercase; animation: marq 40s linear infinite; }
+  .marquee span { margin: 0 16px; } @keyframes marq { to { transform: translateX(-50%); } }
 
-  /* ---------- quest bar ---------- */
-  .quest { position: sticky; top: 0; z-index: 20; background: rgba(242, 234, 231, .94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
-  .quest-in { max-width: 1180px; margin: 0 auto; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .steps { display: flex; gap: 6px; flex-wrap: wrap; }
-  .stp { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--white); border-radius: 999px; padding: 6px 14px 6px 8px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--muted); }
-  .stp b { width: 22px; height: 22px; border-radius: 50%; background: var(--bone); display: grid; place-items: center; font-size: 11px; color: var(--plum); }
-  .stp.now { background: var(--plum); color: var(--cream); border-color: var(--plum); } .stp.now b { background: var(--lime); color: var(--plum); }
-  .stp.done b { background: var(--ok); color: #fff; }
-  .power { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
-  .meter { width: 170px; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
-  .meter span { display: block; height: 100%; width: 0; border-radius: 99px; background: var(--plum); transition: width .5s cubic-bezier(.3, 1.2, .4, 1); }
-  .power b { font-family: var(--body); font-weight: 700; font-size: 17px; color: var(--plum); min-width: 26px; text-align: right; }
-  .lvl { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: var(--lime); color: var(--plum); padding: 4px 10px; border-radius: 99px; }
-
-  @media (max-width: 600px) { .quest { position: static; } .meter { width: 100px; } .power { white-space: nowrap; } .hero-in { padding-bottom: 44px; } }
-  main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 96px; }
-  .grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 24px; align-items: start; }
-  @media (max-width: 920px) { .grid { grid-template-columns: 1fr; } }
-  .sticky { position: sticky; top: 70px; } @media (max-width: 920px) { .sticky { position: static; } }
-
-  .card { background: var(--white); border: 1px solid var(--line); border-radius: 20px; padding: 24px; margin-bottom: 24px; }
-  .lv { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
-  .lv .n { width: 30px; height: 30px; border-radius: 50%; background: var(--plum); color: var(--lime); display: grid; place-items: center; font: 700 13px var(--body); flex: none; }
+  main { max-width: 760px; margin: 0 auto; padding: 28px 20px 40px; }
+  .card { background: var(--white); border: 1px solid var(--line); border-radius: 20px; padding: 24px; margin-bottom: 20px; }
+  .lv { display: flex; align-items: center; gap: 12px; margin-bottom: 2px; }
+  .lv .n { width: 30px; height: 30px; border-radius: 50%; background: var(--plum); color: var(--lime); display: grid; place-items: center; font: 700 13px var(--body); flex: none; transition: background .2s; }
+  .lv.done .n { background: var(--ok); color: #fff; }
   .lv h2 { font-size: 24px; letter-spacing: -0.05em; }
-  .sub { color: var(--muted); margin: 4px 0 8px; font-size: 14px; }
-  h3 { font-size: 15px; margin: 24px 0 10px; display: flex; align-items: center; gap: 8px; letter-spacing: -0.03em; }
-  h3 .ic { color: var(--plum); } h3 .opt { font: 500 12px var(--body); color: var(--faint); letter-spacing: 0; }
-  label, .lbl { display: block; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin: 16px 0 7px; }
-  input[type=text], input[type=number], select, textarea { width: 100%; background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; transition: border-color .15s, box-shadow .15s; }
-  textarea { min-height: 76px; resize: vertical; }
+  .sub { color: var(--muted); margin: 4px 0 6px; font-size: 14px; }
+  label, .lbl { display: block; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin: 18px 0 7px; }
+  input[type=text], select, textarea { width: 100%; background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; transition: border-color .15s, box-shadow .15s; }
+  textarea { min-height: 72px; resize: vertical; }
   input:hover, select:hover, textarea:hover { border-color: #cdbfb8; }
   :is(input, select, textarea):focus { outline: none; border-color: var(--plum); box-shadow: 0 0 0 3px rgba(216, 243, 106, .75); }
-  :is(button, summary, .stp, .drop):focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; box-shadow: 0 0 0 5px var(--plum); }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+  :is(button, summary, .drop, a):focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; box-shadow: 0 0 0 5px var(--plum); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } @media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
   .hint { color: var(--muted); font-size: 12.5px; margin-top: 4px; text-transform: none; letter-spacing: 0; font-weight: 400; }
 
-  button { cursor: pointer; border: 1px solid transparent; background: var(--plum); color: var(--cream); border-radius: 999px; padding: 11px 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 10px; transition: transform .15s, background .15s; }
-  button:hover:not(:disabled) { transform: translateY(-2px); }
-  button:disabled { opacity: .45; cursor: not-allowed; }
-  button.lime { background: var(--lime); color: var(--plum); padding: 14px 22px; } button.lime:hover:not(:disabled) { background: var(--lime-2); }
+  button { cursor: pointer; border: 1px solid transparent; background: var(--plum); color: var(--cream); border-radius: 999px; padding: 11px 20px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 10px; transition: transform .15s, background .15s; }
+  button:hover:not(:disabled) { transform: translateY(-1px); } button:disabled { opacity: .45; cursor: not-allowed; }
+  button.lime { background: var(--lime); color: var(--plum); padding: 13px 24px; } button.lime:hover:not(:disabled) { background: var(--lime-2); }
   button.ghost { background: var(--white); color: var(--plum); border-color: var(--line); } button.ghost:hover:not(:disabled) { border-color: var(--plum); }
-  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+  button.link { background: none; border: 0; padding: 0; color: var(--plum); text-decoration: underline; text-underline-offset: 3px; font-weight: 600; font-size: 13px; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip { background: var(--white); color: var(--plum); border-color: var(--line); padding: 7px 15px; font-size: 14px; font-weight: 600; }
-  .chip:hover:not(:disabled) { border-color: var(--plum); transform: none; }
-  .chip[aria-pressed=true] { background: var(--plum); color: var(--lime); border-color: var(--plum); }
+  .chip { background: var(--white); color: var(--plum); border-color: var(--line); padding: 8px 16px; font-size: 14px; font-weight: 600; }
+  .chip:hover:not(:disabled) { border-color: var(--plum); transform: none; } .chip[aria-pressed=true] { background: var(--plum); color: var(--lime); border-color: var(--plum); }
   .big { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .big .chip { flex-direction: column; gap: 4px; padding: 14px 8px; border-radius: 16px; text-align: center; line-height: 1.25; }
-  .big .chip .ic { width: 22px; height: 22px; } .big .chip small { font-weight: 500; font-size: 11.5px; opacity: .75; }
+  .big .chip { flex-direction: column; gap: 4px; padding: 16px 8px; border-radius: 16px; text-align: center; line-height: 1.25; }
+  .big .chip .ic { width: 24px; height: 24px; } .big .chip small { font-weight: 500; font-size: 11.5px; opacity: .75; }
   .check { display: flex; gap: 10px; align-items: flex-start; margin: 16px 0 0; font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--plum); }
   .check input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--plum); flex: none; }
 
-  .notice { display: none; background: #fbe3e5; border: 1px solid #efb5ba; color: #7b1f2c; border-radius: 12px; padding: 11px 14px; font-weight: 600; margin-bottom: 18px; align-items: center; gap: 10px; }
+  details.more { margin-top: 20px; border: 1px solid var(--line); border-radius: 16px; background: #fbf7f4; }
+  details.more > summary { padding: 13px 16px; font-weight: 600; font-size: 14px; color: var(--plum); cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; }
+  details.more > summary::-webkit-details-marker { display: none; }
+  details.more > summary::after { content: "+"; margin-left: auto; font-size: 20px; line-height: 1; color: var(--muted); }
+  details.more[open] > summary::after { content: "–"; }
+  details.more .in { padding: 0 16px 18px; }
+  details.more .in > :first-child { margin-top: 4px; }
+  summary .count { font-size: 11.5px; font-weight: 700; background: var(--lime); color: var(--plum); padding: 2px 9px; border-radius: 99px; }
+  details.sm { margin-top: 12px; } details.sm > summary { font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+  .sect { font: 700 14px var(--head); letter-spacing: -0.03em; margin: 26px 0 8px; display: flex; align-items: center; gap: 8px; } .sect:first-child { margin-top: 8px; }
+  .sect .opt { font: 500 12px var(--body); color: var(--faint); letter-spacing: 0; }
+
+  .notice { display: none; background: #fbe3e5; border: 1px solid #efb5ba; color: #7b1f2c; border-radius: 12px; padding: 11px 14px; font-weight: 600; margin-bottom: 18px; gap: 10px; align-items: center; }
   .notice.show { display: flex; }
-  .warn { background: #fff6d6; border: 1px solid #ecd88b; border-radius: 12px; padding: 9px 12px; font-size: 13.5px; margin: 8px 0; display: flex; gap: 8px; align-items: flex-start; }
+  .warn { background: #fff6d6; border: 1px solid #ecd88b; border-radius: 12px; padding: 9px 12px; font-size: 13.5px; margin: 8px 0; display: flex; gap: 8px; }
   .warn .ic { margin-top: 2px; color: #9a6a00; }
 
-  .drop { display: block; border: 1.5px dashed #c9bbb4; background: #fbf7f4; border-radius: 16px; padding: 18px; text-align: center; cursor: pointer; text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 500; color: var(--plum); margin: 0; transition: background .15s, border-color .15s; }
+  .drop { display: block; border: 1.5px dashed #c9bbb4; background: #fbf7f4; border-radius: 16px; padding: 22px; text-align: center; cursor: pointer; text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 500; color: var(--plum); margin: 0; transition: background .15s, border-color .15s; }
   .drop:hover { border-color: var(--plum); } .drop.over { background: var(--lime); border-color: var(--plum); }
-  .drop .ic { width: 22px; height: 22px; display: block; margin: 0 auto 6px; }
-  .drop input { display: none; }
-  .photos { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; }
+  .drop .ic { width: 24px; height: 24px; display: block; margin: 0 auto 6px; } .drop input { display: none; }
+  .drop.sm { padding: 14px; }
+  .photos { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
   .ph { position: relative; background: var(--cream); padding: 4px 4px 14px; box-shadow: 0 3px 10px rgba(41, 13, 23, .16); transform: rotate(var(--r, 0deg)); }
   .ph:nth-child(odd) { --r: -2deg; } .ph:nth-child(even) { --r: 2deg; }
   .ph img { width: 62px; height: 82px; object-fit: cover; display: block; }
   .ph em { position: absolute; top: -8px; left: -8px; width: 20px; height: 20px; border-radius: 50%; background: var(--plum); color: var(--lime); font: 700 11px/20px var(--body); text-align: center; font-style: normal; }
-  .mi { display: flex; align-items: center; gap: 10px; margin-top: 8px; background: #fbf7f4; border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; font-size: 13px; font-weight: 500; }
-  .mi video { width: 42px; height: 58px; object-fit: cover; border-radius: 8px; background: #000; }
-  .mi audio { height: 34px; max-width: 210px; } .mi span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .mi { display: flex; align-items: center; gap: 10px; margin-top: 8px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; font-size: 13px; font-weight: 500; }
+  .mi video { width: 42px; height: 58px; object-fit: cover; border-radius: 8px; background: #000; } .mi audio { height: 34px; max-width: 210px; } .mi span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
   .mi button { padding: 6px 8px; } .mi button .ic { width: 14px; height: 14px; }
-
-  .studio { border: 1px solid var(--line); border-radius: 16px; background: #fbf7f4; padding: 16px; margin-top: 8px; }
   .scripts { display: grid; gap: 8px; margin-top: 10px; }
   .script { text-align: left; background: var(--white); color: var(--plum); border-color: var(--line); font-weight: 400; font-size: 13.5px; padding: 11px 14px; border-radius: 14px; display: block; width: 100%; }
-  .script[aria-pressed=true] { border-color: var(--plum); box-shadow: 0 0 0 3px var(--lime); }
-  .script b { font-family: var(--body); display: block; font-size: 14px; }
-  .script small { color: var(--muted); font-weight: 600; }
+  .script[aria-pressed=true] { border-color: var(--plum); box-shadow: 0 0 0 3px var(--lime); } .script b { display: block; font-size: 14px; } .script small { color: var(--muted); font-weight: 600; }
   .rec { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-  .rec .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rose); }
-  .rec.live .dot { animation: pulse 1s infinite; } @keyframes pulse { 50% { opacity: .25; } }
+  .rec .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rose); } .rec.live .dot { animation: pulse 1s infinite; } @keyframes pulse { 50% { opacity: .25; } }
   button.rec-btn { background: var(--rose); color: #fff; } button.rec-btn .dot { background: #fff; }
   .upl { cursor: pointer; border: 1px solid var(--line); background: var(--white); border-radius: 999px; padding: 10px 16px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--plum); margin: 0; display: inline-flex; gap: 8px; align-items: center; }
   .upl:hover { border-color: var(--plum); } .upl input { display: none; }
-  .count { font-weight: 700; font-variant-numeric: tabular-nums; } .count.over { color: var(--rose); }
+  .count-w { font-weight: 700; font-variant-numeric: tabular-nums; } .count-w.over { color: var(--rose); }
   ul.tips { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
-  details > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); list-style: none; display: flex; align-items: center; gap: 6px; }
-  details > summary::-webkit-details-marker { display: none; } details > summary::before { content: "+"; font-weight: 700; width: 14px; }
-  details[open] > summary::before { content: "–"; }
 
+  /* ---------- the ad ---------- */
+  .paper { background: var(--plum); color: var(--cream); border-radius: 24px; padding: 26px; margin-bottom: 20px; }
+  .paper h2 { font-size: 28px; letter-spacing: -0.06em; text-align: center; } .paper h2 span { color: var(--lime); }
+  .flow { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; justify-content: center; margin-top: 22px; }
+  .col { text-align: center; } .cap { font: 700 13px var(--head); margin-bottom: 12px; color: var(--on-plum); }
+  .strip { display: grid; grid-template-columns: repeat(3, auto); gap: 16px 14px; justify-content: center; max-width: 330px; }
+  .strip .ph { padding: 5px 5px 20px; } .strip .ph img { width: 78px; height: 104px; } .strip .ph em { background: var(--lime); color: var(--plum); }
+  .arrow { color: var(--lime); } .arrow .ic { width: 38px; height: 38px; }
+  .phone { width: 224px; border: 7px solid var(--cream); border-radius: 30px; overflow: hidden; background: #12060b; aspect-ratio: 9 / 16; display: grid; place-items: center; margin: 0 auto; box-shadow: 0 20px 50px rgba(0, 0, 0, .4); }
+  .phone video { width: 100%; height: 100%; object-fit: cover; display: block; } .phone .empty { color: var(--on-plum); padding: 16px; text-align: center; font-size: 14px; }
+  a.dl { color: var(--lime); font-weight: 700; display: inline-flex; gap: 8px; align-items: center; margin-top: 12px; }
+  .status { margin-top: 18px; font-weight: 600; text-align: center; color: var(--on-plum); } .status.err { color: #ffb3bd; }
+  .prog { height: 8px; border-radius: 99px; background: rgba(255, 244, 222, .15); overflow: hidden; margin: 12px auto 0; max-width: 360px; }
+  .prog span { display: block; height: 100%; width: 38%; border-radius: 99px; background: var(--lime); animation: slide 1.3s ease-in-out infinite; } @keyframes slide { from { margin-left: -38%; } to { margin-left: 100%; } }
+  .hist { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 12px; }
+  .hist button { text-align: left; background: #fbf7f4; color: var(--plum); border: 1px solid var(--line); font-weight: 500; font-size: 13px; padding: 12px 14px; border-radius: 14px; display: block; width: 100%; }
+  .hist button:hover { border-color: var(--plum); } .hist b { display: flex; gap: 8px; align-items: center; margin-bottom: 2px; }
 
-  .roster { display: grid; gap: 12px; }
-  .mc { border: 1px solid var(--line); border-radius: 16px; background: var(--white); padding: 14px 16px; }
-  .mc.sel { background: var(--plum); color: var(--cream); border-color: var(--plum); }
-  .mc.locked { background: #f6f1ee; color: var(--muted); }
+  /* ---------- the bar at the bottom ---------- */
+  .dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: rgba(255, 255, 255, .96); backdrop-filter: blur(10px); border-top: 1px solid var(--line); }
+  .dock-in { max-width: 760px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .sum { min-width: 0; } .sum b { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .sum span { font-size: 12.5px; color: var(--muted); }
+  .coin { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; } .coin .ic { width: .95em; height: .95em; }
+  @media (max-width: 520px) { .dock-in { gap: 10px; padding: 10px 14px; } button.lime { padding: 12px 16px; } .sum span .sep { display: none; } }
+
+  /* ---------- pop-ups ---------- */
+  dialog { border: 0; border-radius: 22px; padding: 0; width: calc(100% - 28px); max-width: 640px; max-height: 88vh; color: var(--plum); background: var(--white); box-shadow: 0 30px 80px rgba(16, 2, 12, .5); }
+  dialog::backdrop { background: rgba(41, 13, 23, .6); }
+  .dh { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 24px 8px; } .dh h3 { font-size: 22px; letter-spacing: -0.05em; }
+  .db { padding: 4px 24px 24px; overflow: auto; max-height: calc(88vh - 70px); }
+  .dh button.ghost { padding: 8px 10px; } .dh .ic { width: 16px; height: 16px; }
+  .roster { display: grid; gap: 10px; margin-top: 14px; }
+  .mc { border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; background: var(--white); }
+  .mc.sel { background: var(--plum); color: var(--cream); border-color: var(--plum); } .mc.locked { background: #f6f1ee; color: var(--muted); }
   .mc .top { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .mc h4 { font-family: var(--body); font-weight: 700; font-size: 15px; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+  .mc h4 { font-family: var(--body); font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
   .tags { display: flex; gap: 6px; flex-wrap: wrap; }
-  .tagp { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 3px 9px; border-radius: 99px; background: var(--bone); color: var(--plum); display: inline-flex; gap: 5px; align-items: center; }
-  .tagp .ic { width: 11px; height: 11px; }
+  .tagp { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 3px 9px; border-radius: 99px; background: var(--bone); color: var(--plum); display: inline-flex; gap: 5px; align-items: center; } .tagp .ic { width: 11px; height: 11px; }
   .mc.sel .tagp { background: rgba(255, 244, 222, .14); color: var(--cream); } .mc.sel .tagp.sel { background: var(--lime); color: var(--plum); }
   .tagp.ok { background: #dff3e6; color: var(--ok); } .tagp.ow { background: #dbeafe; color: #1e4fa0; }
-  .mc .hint { color: inherit; opacity: .8; }
-  .stat { display: grid; grid-template-columns: 52px 1fr 54px; align-items: center; gap: 10px; font-size: 10.5px; font-weight: 700; letter-spacing: .1em; margin-top: 8px; }
-  .stat span:last-child { text-align: right; letter-spacing: 0; font-size: 12px; }
-  .bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; } .mc.sel .bar { background: rgba(255, 244, 222, .2); }
-  .bar i { display: block; height: 100%; background: var(--plum); border-radius: 99px; } .mc.sel .bar i { background: var(--lime); }
-  .mc details { margin-top: 10px; } .mc summary { color: inherit; opacity: .8; }
-  ul.checks { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; }
-  ul.checks li { padding-left: 20px; position: relative; margin: 3px 0; }
+  .mc .hint { color: inherit; opacity: .82; }
+  .mc .go { margin-top: 10px; } .mc .go button { padding: 8px 16px; font-size: 13px; }
+  .mc details { margin-top: 10px; } .mc summary { font-size: 13px; font-weight: 600; cursor: pointer; opacity: .85; }
+  ul.checks { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; } ul.checks li { padding-left: 20px; position: relative; margin: 3px 0; }
   ul.checks li::before { content: ""; position: absolute; left: 0; top: .45em; width: 11px; height: 6px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); color: var(--ok); }
   .mc.sel ul.checks li::before { color: var(--lime); }
   ul.checks li.bad::before { content: "×"; border: 0; transform: none; top: -2px; font-size: 16px; line-height: 1; width: auto; height: auto; color: var(--rose); }
@@ -171,32 +170,11 @@
   ul.ev { list-style: none; margin: 8px 0 0; padding: 0; font-size: 12.5px; } ul.ev li { margin: 4px 0; } ul.ev a { color: inherit; text-decoration: underline; }
   .ek { font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 7px; border-radius: 99px; margin-right: 6px; background: var(--bone); color: var(--plum); }
   .ek.ran { background: #dff3e6; color: var(--ok); } .ek.comfy { background: #dbeafe; color: #1e4fa0; } .ek.blog { background: #fdeec2; color: #8a5a00; }
-  .legend { font-size: 12.5px; color: var(--muted); margin-top: 12px; }
-
-  .status { margin-top: 14px; font-weight: 600; } .status.err { color: #b42335; }
-  .prog { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; margin-top: 12px; }
-  .prog span { display: block; height: 100%; width: 38%; border-radius: 99px; background: var(--plum); animation: slide 1.3s ease-in-out infinite; }
-  @keyframes slide { from { margin-left: -38%; } to { margin-left: 100%; } }
-  .confirm { background: #fbf7f4; border: 1px solid var(--plum); border-radius: 14px; padding: 14px 16px; margin-top: 14px; font-weight: 600; }
-  .coin { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; } .coin .ic { width: .95em; height: .95em; }
-
-  .paper { background: var(--plum); color: var(--cream); border-radius: 24px; padding: 28px; margin-bottom: 24px; position: relative; overflow: hidden; }
-  .paper h2 { font-size: 30px; letter-spacing: -0.06em; text-align: center; } .paper h2 span { color: var(--lime); }
-  .paper .eyebrow { justify-content: center; margin-bottom: 12px; }
-  .flow { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; justify-content: center; margin-top: 24px; }
-  .col { text-align: center; } .cap { font: 700 13px var(--head); letter-spacing: .02em; margin-bottom: 12px; color: var(--on-plum); }
-  .strip { display: grid; grid-template-columns: repeat(3, auto); gap: 16px 14px; justify-content: center; max-width: 330px; }
-  .strip .ph { padding: 5px 5px 20px; } .strip .ph img { width: 82px; height: 108px; } .strip .ph em { background: var(--lime); color: var(--plum); }
-  .arrow { color: var(--lime); } .arrow .ic { width: 40px; height: 40px; }
-  .phone { width: 232px; border: 7px solid var(--cream); border-radius: 32px; overflow: hidden; background: #12060b; aspect-ratio: 9 / 16; display: grid; place-items: center; margin: 0 auto; box-shadow: 0 20px 50px rgba(0, 0, 0, .4); }
-  .phone video { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .phone .empty { color: var(--on-plum); padding: 16px; text-align: center; font-size: 14px; }
-  a.dl { color: var(--lime); font-weight: 700; display: inline-flex; gap: 8px; align-items: center; margin-top: 12px; }
-  .hist { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
-  .hist button { text-align: left; background: #fbf7f4; color: var(--plum); border: 1px solid var(--line); font-weight: 500; font-size: 13px; padding: 12px 14px; border-radius: 14px; display: block; width: 100%; }
-  .hist button:hover { border-color: var(--plum); } .hist b { font-family: var(--body); display: flex; gap: 8px; align-items: center; margin-bottom: 2px; }
-  canvas#fx { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
-  @media (prefers-reduced-motion: reduce) { .marquee div, .prog span, .rec.live .dot,  .prog span { width: 100%; } html { scroll-behavior: auto; } button:hover:not(:disabled) { transform: none; } }
+  .legend { font-size: 12.5px; color: var(--muted); margin-top: 14px; }
+  .pick { background: #fbf7f4; border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; margin: 12px 0; display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .pick b { display: block; }
+  canvas#fx { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
+  @media (prefers-reduced-motion: reduce) { .marquee div, .prog span, .rec.live .dot { animation: none; } .prog span { width: 100%; } html { scroll-behavior: auto; } button:hover:not(:disabled) { transform: none; } }
 </style>
 </head>
 <body>
@@ -216,8 +194,6 @@
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></symbol>
   <symbol id="i-arrowup" viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol>
   <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
-  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
-  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
   <symbol id="i-film" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
   <symbol id="i-stop" viewBox="0 0 24 24"><rect width="14" height="14" x="5" y="5" rx="2"/></symbol>
@@ -234,14 +210,12 @@
     </nav>
     <div class="hero-grid">
       <div>
-        <p class="eyebrow"><i></i> Built for brands and creators</p>
-        <h1>Your photos.<br>Your brief.<br><span>The right model.</span></h1>
-        <p class="intro">Describe your campaign, drop in your photos, and Reelmatch picks the video model that fits, shows its reasoning, and renders a vertical ad draft.</p>
-        <div class="actions"><button class="lime" data-go="lv1">Start your campaign <svg class="ic"><use href="#i-arrowup"/></svg></button></div>
+        <h1>Your photos.<br>Your brief.<br><span>Your ad.</span></h1>
+        <p class="intro">Tell us about your campaign and add a few photos. Reelmatch picks the right video model for you and makes a vertical ad draft.</p>
       </div>
       <div class="collage" aria-hidden="true">
-        <figure class="pol a" style="margin:0"><div id="pol1" class="ph-empty"><svg class="ic" style="width:34px;height:34px"><use href="#i-camera"/></svg></div><figcaption>The cast.</figcaption></figure>
-        <figure class="pol b" style="margin:0"><div id="pol2" class="ph-empty"><svg class="ic" style="width:28px;height:28px"><use href="#i-camera"/></svg></div><figcaption>Photos in.</figcaption></figure>
+        <figure class="pol a"><div id="pol1" class="ph-empty"><svg class="ic" style="width:30px;height:30px"><use href="#i-camera"/></svg></div><figcaption>The cast.</figcaption></figure>
+        <figure class="pol b"><div id="pol2" class="ph-empty"><svg class="ic" style="width:24px;height:24px"><use href="#i-camera"/></svg></div><figcaption>Photos in.</figcaption></figure>
         <div class="sticker">photos in.<br>ad out.<svg class="ic"><use href="#i-asterisk"/></svg></div>
       </div>
     </div>
@@ -249,149 +223,133 @@
   <div class="marquee" aria-hidden="true"><div id="marq"></div></div>
 </header>
 
-<div class="quest">
-  <div class="quest-in">
-    <div class="steps" id="steps">
-      <button class="stp now" data-go="lv1"><b>1</b>Campaign</button>
-      <button class="stp" data-go="lv2"><b>2</b>Cast and media</button>
-      <button class="stp" data-go="lv3"><b>3</b>Pick a model</button>
-      <button class="stp" data-go="lv4"><b>4</b>Launch</button>
-    </div>
-    <div class="power" title="How complete your brief is. More detail gives the model more to work with.">
-      Ad power <div class="meter"><span id="meterFill"></span></div><b id="meterNum">0</b><span class="lvl" id="lvlName">Rookie</span>
-    </div>
-  </div>
-</div>
-
 <main>
   <div class="notice" id="notice" role="alert"><svg class="ic"><use href="#i-alert"/></svg><span id="noticeText"></span></div>
-  <div class="grid">
-    <div>
-      <section class="card" id="lv1">
-        <div class="lv"><span class="n">1</span><h2>Your campaign</h2></div>
-        <p class="sub">Tap the options. Use the boxes only to describe things.</p>
-        <label for="brand">Brand</label><input type="text" id="brand" value="Soraa">
-        <div class="lbl">What is the ad about?</div><div class="big" id="g-subject"></div>
-        <div class="lbl">Goal</div><div class="chips" id="g-goal"></div>
-        <div class="lbl">Platform</div><div class="chips" id="g-platform"></div>
-        <div class="lbl">Length</div><div class="chips" id="g-length"></div>
-        <div class="lbl">Sound</div><div class="chips" id="g-audio"></div>
-        <div class="lbl">Style (pick any)</div><div class="chips" id="g-style"></div>
-        <div class="lbl">Camera (pick any)</div><div class="chips" id="g-camera"></div>
-        <div class="row">
-          <div><label for="s-setting">Setting</label><select id="s-setting"></select></div>
-          <div><label for="s-audience">Audience</label><select id="s-audience"></select></div>
-        </div>
-        <div class="row">
-          <div><label for="s-cta">Call to action</label><select id="s-cta"></select></div>
-          <div><label for="s-budget">Credit budget</label><select id="s-budget"></select></div>
-        </div>
-        <label for="description" id="descLabel">Describe your brand or product</label>
-        <textarea id="description">A new way to find brand partnerships, like Hinge for creators and brands.</textarea>
-        <label for="message">On-screen line</label><input type="text" id="message" value="You'd stop scrolling for us.">
-        <label for="feel">What should viewers feel?</label><textarea id="feel">curious and a little bit in on the secret</textarea>
-        <div class="row">
-          <div><label for="include">Must include</label><textarea id="include" placeholder="Props, colors, a moment"></textarea></div>
-          <div><label for="avoid">Avoid</label><textarea id="avoid" placeholder="Competitors, colors, text"></textarea></div>
-        </div>
-      </section>
 
-      <section class="card" id="lv2">
-        <div class="lv"><span class="n">2</span><h2>Cast and media</h2></div>
-        <p class="sub">Photos are the cast. A video, music and your own voice are optional extras.</p>
+  <!-- STEP 1 -->
+  <section class="card" id="s1">
+    <div class="lv" id="lv1"><span class="n">1</span><h2>Your campaign</h2></div>
+    <p class="sub">The basics. Everything else is optional.</p>
+    <label for="brand">Brand</label><input type="text" id="brand" value="Soraa">
+    <div class="lbl">What is the ad about?</div><div class="big" id="g-subject"></div>
+    <label for="description" id="descLabel">Describe your brand or product</label>
+    <textarea id="description">A new way to find brand partnerships, like Hinge for creators and brands.</textarea>
+    <label for="message">On-screen line</label><input type="text" id="message" value="You'd stop scrolling for us.">
+    <div class="lbl">Length</div><div class="chips" id="g-length"></div>
+    <div class="lbl">Sound</div><div class="chips" id="g-audio"></div>
 
-        <h3><svg class="ic"><use href="#i-camera"/></svg>Photos</h3>
-        <label class="drop" id="drop" for="files"><svg class="ic"><use href="#i-upload"/></svg><b>Drop photos here</b> or click to choose<br><span class="hint">JPG, PNG or WebP, up to 20.</span>
-          <input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple></label>
-        <div class="photos" id="thumbs"></div>
-        <details style="margin-top:12px"><summary>Use a folder on this computer instead</summary>
-          <label for="folder">Folder path</label><input type="text" id="folder" value="assets/soraa">
-          <div class="hint">Used only when no photos are dropped above.</div></details>
+    <details class="more"><summary>Fine-tune the look</summary><div class="in">
+      <div class="lbl">Goal</div><div class="chips" id="g-goal"></div>
+      <div class="lbl">Platform</div><div class="chips" id="g-platform"></div>
+      <div class="lbl">Style (pick any)</div><div class="chips" id="g-style"></div>
+      <div class="lbl">Camera (pick any)</div><div class="chips" id="g-camera"></div>
+      <div class="row">
+        <div><label for="s-setting">Setting</label><select id="s-setting"></select></div>
+        <div><label for="s-audience">Audience</label><select id="s-audience"></select></div>
+      </div>
+      <div class="row">
+        <div><label for="s-cta">Call to action</label><select id="s-cta"></select></div>
+        <div><label for="s-budget">Credit budget</label><select id="s-budget"></select></div>
+      </div>
+      <label for="feel">What should viewers feel?</label><textarea id="feel">curious and a little bit in on the secret</textarea>
+      <div class="row">
+        <div><label for="include">Must include</label><textarea id="include" placeholder="Props, colors, a moment"></textarea></div>
+        <div><label for="avoid">Avoid</label><textarea id="avoid" placeholder="Competitors, colors, text"></textarea></div>
+      </div>
+      <label class="check"><input type="checkbox" id="ow"><span>Open-weights models only. <span class="hint">None is wired up yet, so this will say no model fits.</span></span></label>
+      <label class="check" id="kycRow"><input type="checkbox" id="kyc"><span>Use a verified likeness (identity check) for people. <span class="hint">Not wired up yet, so this will say no model fits.</span></span></label>
+    </div></details>
+  </section>
 
-        <h3><svg class="ic"><use href="#i-video"/></svg>Reference video <span class="opt">optional</span></h3>
-        <label class="drop" id="dropV" for="vfiles"><svg class="ic"><use href="#i-upload"/></svg><b>Add a video</b> to copy its motion, or to extend or edit it<br><span class="hint">MP4, MOV or WebM, up to 3 clips, 40 MB each. Only the first 15 seconds are used.</span>
-          <input id="vfiles" type="file" accept="video/mp4,video/quicktime,video/webm" multiple></label>
-        <div id="vlist"></div>
-        <div id="modeBox" class="hidden"><div class="lbl">What should we do with it?</div><div class="chips" id="g-video_mode"></div>
-          <div class="hint">Extend and edit run on Seedance 2.5 and have not been run live yet.</div></div>
+  <!-- STEP 2 -->
+  <section class="card" id="s2">
+    <div class="lv" id="lv2"><span class="n">2</span><h2>Your photos</h2></div>
+    <p class="sub">Add the photos the ad should be built from. People, products, places, props.</p>
+    <label class="drop" id="drop" for="files"><svg class="ic"><use href="#i-upload"/></svg><b>Drop photos here</b> or click to choose<br><span class="hint">JPG, PNG or WebP, up to 20.</span>
+      <input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple></label>
+    <div class="photos" id="thumbs"></div>
+    <details class="sm"><summary>Use a folder on this computer instead</summary>
+      <label for="folder">Folder path</label><input type="text" id="folder" value="assets/soraa"><div class="hint">Used only when no photos are dropped above.</div></details>
 
-        <h3><svg class="ic"><use href="#i-music"/></svg>Music <span class="opt">optional</span></h3>
-        <label class="drop" id="dropA" for="afiles"><svg class="ic"><use href="#i-upload"/></svg><b>Add a track</b> for the soundtrack<br><span class="hint">MP3, WAV or M4A, up to 3 files, 15 MB each.</span>
-          <input id="afiles" type="file" accept="audio/mpeg,audio/wav,audio/mp4,audio/x-m4a,.mp3,.wav,.m4a" multiple></label>
-        <div id="alist"></div>
-        <label class="check hidden" id="soundRow"><input type="checkbox" id="soundtrack" checked>
-          <span>Use my first track as the final soundtrack. <span class="hint">Mixed in by Reelmatch, so it works with every model.</span></span></label>
+    <details class="more"><summary>Add a video, music or your voice <span class="count hidden" id="extrasCount"></span></summary><div class="in">
+      <div class="sect"><svg class="ic"><use href="#i-video"/></svg>Reference video <span class="opt">optional</span></div>
+      <label class="drop sm" id="dropV" for="vfiles"><b>Add a video</b> to copy its motion, or to extend or edit it<br><span class="hint">MP4, MOV or WebM, up to 3, 40 MB each. Only the first 15 seconds are used.</span>
+        <input id="vfiles" type="file" accept="video/mp4,video/quicktime,video/webm" multiple></label>
+      <div id="vlist"></div>
+      <div id="modeBox" class="hidden"><div class="lbl">What should we do with it?</div><div class="chips" id="g-video_mode"></div>
+        <div class="hint">Extend and edit run on Seedance 2.5 and have not been run live yet.</div></div>
 
-        <h3><svg class="ic"><use href="#i-mic"/></svg>Your voice <span class="opt">optional</span></h3>
-        <div class="studio">
-          <div><b>Need a script?</b> <span class="hint">Sized to your ad length. Edit it freely.</span></div>
-          <div class="actions" style="margin-top:10px"><button class="ghost" id="scriptBtn" type="button"><svg class="ic"><use href="#i-sparkles"/></svg>Suggest scripts</button></div>
-          <div class="scripts" id="scripts"></div>
-          <label for="scriptText">Your script</label>
-          <textarea id="scriptText" placeholder="Paste or write your voiceover here, or pick a suggestion above."></textarea>
-          <div class="hint"><span class="count" id="scriptCount">0 words</span> <span id="scriptPrompt"></span></div>
-          <details style="margin-top:8px"><summary>Tips for a good recording</summary><ul class="tips" id="tips"><li>Press Suggest scripts to see tips.</li></ul></details>
-          <div class="rec" id="rec">
-            <button class="rec-btn" id="recBtn" type="button"><span class="dot"></span>Record</button>
-            <button class="ghost hidden" id="stopBtn" type="button"><svg class="ic"><use href="#i-stop"/></svg>Stop</button>
-            <span class="count" id="recTime">0:00</span>
-            <label class="upl"><svg class="ic"><use href="#i-upload"/></svg>or upload a recording<input id="vfile" type="file" accept="audio/mpeg,audio/wav,audio/mp4,audio/x-m4a,.mp3,.wav,.m4a"></label>
-          </div>
-          <div id="voiceList"></div>
-          <div class="hint">Your voice is mixed over the ad. If you also add music, the music ducks while you talk.</div>
-        </div>
+      <div class="sect"><svg class="ic"><use href="#i-music"/></svg>Music <span class="opt">optional</span></div>
+      <label class="drop sm" id="dropA" for="afiles"><b>Add a track</b> for the soundtrack<br><span class="hint">MP3, WAV or M4A, up to 3, 15 MB each.</span>
+        <input id="afiles" type="file" accept="audio/mpeg,audio/wav,audio/mp4,audio/x-m4a,.mp3,.wav,.m4a" multiple></label>
+      <div id="alist"></div>
+      <label class="check hidden" id="soundRow"><input type="checkbox" id="soundtrack" checked><span>Use my first track as the final soundtrack. <span class="hint">Mixed in by Reelmatch, so it works with every model.</span></span></label>
 
-        <label class="check"><input type="checkbox" id="consent"><span id="consentText"></span></label>
-        <label class="check" id="kycRow"><input type="checkbox" id="kyc"><span>Use a verified likeness (identity check) for people on screen. <span class="hint">Not wired up yet, so ticking it will say no model fits.</span></span></label>
-        <label class="check"><input type="checkbox" id="ow"><span>Open-weights models only. <span class="hint">No open-weights model is wired up yet, so ticking it will say no model fits.</span></span></label>
-        <div class="actions"><button class="lime" id="planBtn" type="button">Find my model <svg class="ic"><use href="#i-arrowup"/></svg></button></div>
-      </section>
-    </div>
+      <div class="sect"><svg class="ic"><use href="#i-mic"/></svg>Your voice <span class="opt">optional</span></div>
+      <div class="actions" style="margin-top:4px"><button class="ghost" id="scriptBtn" type="button"><svg class="ic"><use href="#i-sparkles"/></svg>Need a script? Suggest some</button></div>
+      <div class="scripts" id="scripts"></div>
+      <label for="scriptText">Your script</label>
+      <textarea id="scriptText" placeholder="Write or paste your voiceover, or pick a suggestion above."></textarea>
+      <div class="hint"><span class="count-w" id="scriptCount">0 words</span> <span id="scriptPrompt"></span></div>
+      <details class="sm"><summary>Tips for a good recording</summary><ul class="tips" id="tips"><li>Suggest a script to see tips.</li></ul></details>
+      <div class="rec" id="rec">
+        <button class="rec-btn" id="recBtn" type="button"><span class="dot"></span>Record</button>
+        <button class="ghost hidden" id="stopBtn" type="button"><svg class="ic"><use href="#i-stop"/></svg>Stop</button>
+        <span class="count-w" id="recTime">0:00</span>
+        <label class="upl"><svg class="ic"><use href="#i-upload"/></svg>or upload a recording<input id="vfile" type="file" accept="audio/mpeg,audio/wav,audio/mp4,audio/x-m4a,.mp3,.wav,.m4a"></label>
+      </div>
+      <div id="voiceList"></div>
+      <div class="hint">Your voice plays over the ad. With music, the music dips while you talk.</div>
+    </div></details>
 
-    <div class="sticky">
-      <section class="card" id="lv3">
-        <div class="lv"><span class="n">3</span><h2>Pick a model</h2></div>
-        <div id="emptyPlan" class="hint">Fill in your campaign and press <b>Find my model</b>. We score every model against your brief and lock the ones that cannot do the job.</div>
-        <div id="planArea" class="hidden">
-          <div id="warnings"></div>
-          <div class="roster" id="roster"></div>
-          <div class="legend"><span class="ek ran">ran</span>we ran it &nbsp; <span class="ek comfy">comfy</span>Comfy docs or estimator &nbsp; <span class="ek blog">blog</span>web article, take with salt</div>
-        </div>
-      </section>
+    <label class="check"><input type="checkbox" id="consent"><span id="consentText"></span></label>
+  </section>
 
-      <section class="card" id="lv4">
-        <div class="lv"><span class="n">4</span><h2>Launch</h2></div>
-        <div id="launchEmpty" class="hint">Pick a model first.</div>
-        <div id="planEditor" class="hidden">
-          <label for="plan">Shot plan (editable)</label>
-          <textarea id="plan" style="min-height:220px"></textarea>
-          <div class="actions"><button class="lime" id="genBtn" type="button"><svg class="ic"><use href="#i-film"/></svg>Roll the cameras</button></div>
-          <div class="confirm hidden" id="confirmBox"><div id="confirmText"></div>
-            <div class="actions"><button id="goBtn" type="button">Yes, spend the credits</button><button class="ghost" id="cancelBtn" type="button">Not yet</button></div></div>
-        </div>
-        <div class="status" id="status" aria-live="polite"></div>
-        <div class="prog hidden" id="prog"><span></span></div>
-      </section>
-    </div>
-  </div>
-
+  <!-- THE AD -->
   <section class="paper" id="premiere">
-    <p class="eyebrow"><i></i> Premiere</p>
     <h2 id="headline">Photos in. <span>Ad out.</span></h2>
     <div class="flow">
-      <div class="col"><div class="cap" id="inCap">Your cast</div><div class="strip" id="strip"><div class="hint" style="color:var(--on-plum)">Photos show up here.</div></div></div>
+      <div class="col"><div class="cap" id="inCap">Your photos</div><div class="strip" id="strip"><div class="hint" style="color:var(--on-plum)">Photos show up here.</div></div></div>
       <div class="arrow" aria-hidden="true"><svg class="ic"><use href="#i-arrow"/></svg></div>
       <div class="col"><div class="cap">Your ad</div>
-        <div class="phone"><video id="video" class="hidden" controls playsinline loop></video><div class="empty" id="phEmpty">Your draft plays here</div></div>
+        <div class="phone"><video id="video" class="hidden" controls playsinline loop></video><div class="empty" id="phEmpty">Your ad plays here</div></div>
         <a id="dl" class="dl hidden" download><svg class="ic"><use href="#i-download"/></svg>Download video</a></div>
     </div>
+    <div class="status" id="status" aria-live="polite"></div>
+    <div class="prog hidden" id="prog"><span></span></div>
   </section>
 
   <section class="card">
-    <div class="lv"><span class="n"><svg class="ic" style="width:15px;height:15px"><use href="#i-film"/></svg></span><h2>Recent drafts</h2></div>
-    <div class="hist" id="hist" style="margin-top:12px"><div class="hint">Finished drafts land here and survive restarts.</div></div>
+    <div class="lv"><span class="n"><svg class="ic" style="width:15px;height:15px"><use href="#i-film"/></svg></span><h2>Recent ads</h2></div>
+    <div class="hist" id="hist"><div class="hint">Finished ads land here and are kept between runs.</div></div>
   </section>
 </main>
+
+<!-- bottom bar: the model is picked for you -->
+<div class="dock"><div class="dock-in">
+  <div class="sum"><b id="dockModel">Choosing a model...</b><span id="dockMeta"></span> <button class="link" id="whyBtn" type="button">Why this model?</button></div>
+  <button class="lime" id="makeBtn" type="button">Make my ad <svg class="ic"><use href="#i-arrowup"/></svg></button>
+</div></div>
+
+<dialog id="modelDlg" aria-labelledby="modelTitle">
+  <div class="dh"><h3 id="modelTitle">Why this model?</h3><button class="ghost" type="button" data-close aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button></div>
+  <div class="db">
+    <p class="sub" id="modelLead"></p>
+    <div class="roster" id="roster"></div>
+    <div class="legend"><span class="ek ran">ran</span>we ran it &nbsp; <span class="ek comfy">comfy</span>Comfy docs or estimator &nbsp; <span class="ek blog">blog</span>web article, take with salt</div>
+  </div>
+</dialog>
+
+<dialog id="confirmDlg" aria-labelledby="confTitle">
+  <div class="dh"><h3 id="confTitle">Ready to make it</h3><button class="ghost" type="button" data-close aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button></div>
+  <div class="db">
+    <div id="warnings"></div>
+    <div class="pick"><div><b id="confModel"></b><span class="hint" id="confWhy"></span></div><button class="ghost" id="confChange" type="button">Change model</button></div>
+    <details class="sm"><summary>Edit the shot plan</summary><textarea id="plan" style="min-height:220px;margin-top:8px"></textarea></details>
+    <p style="margin:16px 0 0;font-weight:600" id="confText"></p>
+    <div class="actions"><button class="lime" id="goBtn" type="button"><svg class="ic"><use href="#i-film"/></svg>Make it</button><button class="ghost" data-close type="button">Not yet</button></div>
+  </div>
+</dialog>
 <canvas id="fx" aria-hidden="true"></canvas>
 
 <script>
@@ -399,15 +357,16 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const ic = (n, s) => `<svg class="ic"${s ? ` style="${s}"` : ""} aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-let OPTS = {}, uploads = [], videos = [], audios = [], voices = [], credits = 0, planDone = false, finished = false, canGenerate = false;
+let OPTS = {}, uploads = [], videos = [], audios = [], voices = [], photoCount = 0, quote = null, override = null, busy = false;
 const state = { subject: "people", goal: "awareness", platform: "TikTok", length: "15", audio: "music", style: ["ugc", "playful"], camera: ["handheld", "quick_cuts"], video_mode: "reference" };
 const subjectInfo = { product: ["package", "Product", "perfume, oil, gadget"], people: ["users", "People", "creators, founders"], both: ["layers", "Both", "someone using it"] };
 
 $("marq").innerHTML = Array(2).fill(["Photos", "Briefs", "Models", "Voice", "Music", "Drafts"].map((w) => `<span>${w}</span><span>×</span>`).join("")).join("");
-document.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => $(b.dataset.go).scrollIntoView({ behavior: "smooth", block: "start" })));
-
 const notice = (m) => { $("noticeText").textContent = m || ""; $("notice").classList.toggle("show", !!m); if (m) $("notice").scrollIntoView({ behavior: "smooth", block: "center" }); };
+document.querySelectorAll("dialog [data-close]").forEach((b) => (b.onclick = () => b.closest("dialog").close()));
+document.querySelectorAll("dialog").forEach((d) => d.addEventListener("click", (e) => { if (e.target === d) d.close(); }));
 
+/* ---- buttons and dropdowns come from the server's option list ---- */
 function chips(id, group, multi) {
   const box = $(id);
   const draw = () => {
@@ -419,7 +378,7 @@ function chips(id, group, multi) {
     box.querySelectorAll("button").forEach((b) => (b.onclick = () => {
       const v = b.dataset.v;
       if (multi) state[group] = state[group].includes(v) ? state[group].filter((x) => x !== v) : [...state[group], v]; else state[group] = v;
-      draw(); if (group === "subject" || group === "video_mode") onSubject(); hud();
+      draw(); if (group === "subject" || group === "video_mode") onSubject(); changed();
     }));
   };
   draw();
@@ -427,10 +386,9 @@ function chips(id, group, multi) {
 const fillSelect = (id, group, def) => { $(id).innerHTML = OPTS[group].map((o) => `<option value="${esc(o.value)}"${String(o.value) === def ? " selected" : ""}>${esc(o.label)}</option>`).join(""); };
 function onSubject() {
   const s = state.subject, m = state.video_mode;
-  $("kycRow").classList.toggle("hidden", s === "product");
-  if (s === "product") $("kyc").checked = false;
-  $("consentText").textContent = s === "product" ? "I own or have the rights to these product photos, brand assets and any video, music or voice I add."
-    : "These are my own photos, or everyone shown has said I can use their likeness in an ad. I have the rights to any video, music or voice I add.";
+  $("kycRow").classList.toggle("hidden", s === "product"); if (s === "product") $("kyc").checked = false;
+  $("consentText").textContent = s === "product" ? "I own or have the rights to these product photos, brand assets and anything else I add."
+    : "These are my own photos, or everyone shown has agreed to their use in an ad. I have the rights to anything else I add.";
   $("descLabel").textContent = m === "edit" ? "What should change?" : m.startsWith("extend") ? "What happens next?"
     : s === "product" ? "Describe the product (what it is, scent, material, label)" : "Describe your brand or product";
 }
@@ -438,10 +396,9 @@ async function init() {
   OPTS = await (await fetch("/api/options")).json();
   ["subject", "goal", "platform", "length", "audio", "video_mode"].forEach((g) => chips("g-" + g, g));
   chips("g-style", "style", true); chips("g-camera", "camera", true);
-  fillSelect("s-audience", "audience", "genz"); fillSelect("s-cta", "cta", "none");
-  fillSelect("s-setting", "setting", "street_night"); fillSelect("s-budget", "budget", "");
-  onSubject(); health(); refreshPhotos(); history(); hud();
-  document.querySelectorAll("input[type=text], textarea, select, input[type=checkbox]").forEach((e) => e.addEventListener("input", hud));
+  fillSelect("s-audience", "audience", "genz"); fillSelect("s-cta", "cta", "none"); fillSelect("s-setting", "setting", "street_night"); fillSelect("s-budget", "budget", "");
+  onSubject(); health(); refreshPhotos(); history();
+  document.querySelectorAll("input[type=text], textarea, select, input[type=checkbox]").forEach((e) => e.addEventListener("input", changed));
 }
 
 const brief = () => ({
@@ -453,7 +410,7 @@ const brief = () => ({
   video_mode: videos.length ? state.video_mode : "reference",
 });
 const strip = (a) => a.map(({ name, data }) => ({ name, data }));
-const payload = () => ({ brief: brief(), folder: $("folder").value, uploads, videos: strip(videos), audios: strip(audios), voices: strip(voices) });
+const payload = () => ({ brief: brief(), folder: $("folder").value, uploads, videos: strip(videos), audios: strip(audios), voices: strip(voices), model_id: override });
 const post = async (url, body) => {
   const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({ error: "Unexpected response from the server." }));
@@ -461,17 +418,25 @@ const post = async (url, body) => {
   return j;
 };
 
-/* ---- progress: brief strength and the quest track ---- */
-let photoCount = 0;
-function hud() {
-  const has = (id, n = 1) => $(id).value.trim().length >= n;
-  const p = Math.min(photoCount, 5) * 5 + (has("brand") ? 5 : 0) + (has("description", 10) ? 10 : 0) + (has("message") ? 5 : 0)
-    + (state.style.length ? 5 : 0) + (state.camera.length ? 5 : 0) + (videos.length ? 10 : 0) + (audios.length ? 10 : 0)
-    + (voices.length ? 15 : 0) + ($("consent").checked ? 5 : 0) + (planDone ? 5 : 0);
-  $("meterFill").style.width = p + "%"; $("meterNum").textContent = p;
-  $("lvlName").textContent = p >= 100 ? "Legend" : p >= 75 ? "Pro" : p >= 50 ? "Creator" : p >= 25 ? "Rising" : "Rookie";
-  const now = finished || planDone ? 4 : photoCount ? 3 : has("description", 10) ? 2 : 1;
-  document.querySelectorAll(".stp").forEach((b, i) => { b.classList.toggle("now", i + 1 === now); b.classList.toggle("done", i + 1 < now || (finished && i === 3)); const n = b.querySelector("b"); n.innerHTML = b.classList.contains("done") ? ic("check", "width:12px;height:12px") : i + 1; });
+/* ---- the quote: which model, what it costs. Runs quietly on every change. ---- */
+let qTimer = null;
+function changed() { clearTimeout(qTimer); qTimer = setTimeout(refreshQuote, 250); markSteps(); }
+async function refreshQuote() {
+  try {
+    quote = await post("/api/quote", { brief: brief(), counts: { images: photoCount, videos: videos.length, audios: audios.length, voices: voices.length },
+      video_seconds: videos[0] && videos[0].sec, model_id: override });
+    if (quote.override_ignored) override = null;
+    const m = quote.model;
+    if (!m.model) { $("dockModel").textContent = "No model fits this brief"; $("dockMeta").textContent = ""; return; }
+    $("dockModel").textContent = m.label + (m.overridden ? " (your pick)" : "");
+    $("dockMeta").innerHTML = `${quote.duration}s <span class="sep">·</span> about <span class="coin">${ic("coins")}${quote.credits}</span> credits`;
+  } catch (e) { $("dockModel").textContent = "Could not reach the server"; }
+}
+function markSteps() {
+  $("lv1").classList.toggle("done", !!($("brand").value.trim() && $("description").value.trim().length >= 10));
+  $("lv2").classList.toggle("done", photoCount > 0 && $("consent").checked);
+  for (const [id, n] of [["lv1", 1], ["lv2", 2]]) $(id).querySelector(".n").innerHTML = $(id).classList.contains("done") ? ic("check", "width:14px;height:14px") : n;
+  const n = videos.length + audios.length + voices.length; $("extrasCount").textContent = n; $("extrasCount").classList.toggle("hidden", !n);
 }
 
 async function health() {
@@ -487,16 +452,17 @@ async function health() {
 /* ---- photos ---- */
 const showPhotos = (imgs) => {
   photoCount = imgs.length;
-  const html = imgs.map((p) => `<div class="ph"><em>${p.n}</em><img src="${p.url}" alt="Reference photo ${p.n}"></div>`).join("");
+  const html = imgs.map((p) => `<div class="ph"><em>${p.n}</em><img src="${p.url}" alt="Photo ${p.n}"></div>`).join("");
   $("thumbs").innerHTML = html; $("strip").innerHTML = html || '<div class="hint" style="color:var(--on-plum)">Photos show up here.</div>';
-  $("inCap").textContent = imgs.length ? `Your cast of ${imgs.length}` : "Your cast";
+  $("inCap").textContent = imgs.length ? `Your ${imgs.length} photo${imgs.length === 1 ? "" : "s"}` : "Your photos";
   [["pol1", 0], ["pol2", 1]].forEach(([id, i]) => { if (imgs[i]) $(id).outerHTML = `<img id="${id}" src="${imgs[i].url}" alt="">`; });
-  hud();
+  changed();
 };
 const refreshPhotos = async () => { try { notice(""); showPhotos((await post("/api/photos", payload())).images); } catch (e) { notice(e.message); } };
+const videoSeconds = (url) => new Promise((res) => { const v = document.createElement("video"); v.preload = "metadata"; v.onloadedmetadata = () => res(v.duration); v.onerror = () => res(0); v.src = url; });
 const readFile = (f) => new Promise((res) => {
   const fr = new FileReader();
-  fr.onload = () => res({ name: f.name, data: fr.result, url: URL.createObjectURL(f), mb: (f.size / 1048576).toFixed(1) });
+  fr.onload = async () => { const url = URL.createObjectURL(f); res({ name: f.name, data: fr.result, url, mb: (f.size / 1048576).toFixed(1), sec: f.type.startsWith("video") ? await videoSeconds(url) : 0 }); };
   fr.readAsDataURL(f);
 });
 async function takePhotos(list) { uploads = (await Promise.all([...list].slice(0, 20).map(readFile))).map(({ name, data }) => ({ name, data })); refreshPhotos(); }
@@ -507,38 +473,31 @@ const wireDrop = (inputId, dropId, fn) => {
   ["dragleave", "drop"].forEach((ev) => d.addEventListener(ev, (e) => { e.preventDefault(); d.classList.remove("over"); }));
   d.addEventListener("drop", (e) => fn(e.dataTransfer.files));
 };
-wireDrop("files", "drop", takePhotos);
-$("folder").addEventListener("change", refreshPhotos);
+wireDrop("files", "drop", takePhotos); $("folder").addEventListener("change", refreshPhotos);
 
 /* ---- video, music, voice ---- */
 function renderMedia() {
   const row = (k, m, i) => `<div class="mi">${k === "v" ? `<video src="${m.url}" muted playsinline></video>` : `<audio src="${m.url}" controls></audio>`}
     <span>${esc(m.name)}, ${m.mb} MB</span><button type="button" class="ghost" data-k="${k}" data-i="${i}" aria-label="Remove ${esc(m.name)}">${ic("x")}</button></div>`;
-  $("vlist").innerHTML = videos.map((m, i) => row("v", m, i)).join("");
-  $("alist").innerHTML = audios.map((m, i) => row("a", m, i)).join("");
+  $("vlist").innerHTML = videos.map((m, i) => row("v", m, i)).join(""); $("alist").innerHTML = audios.map((m, i) => row("a", m, i)).join("");
   $("voiceList").innerHTML = voices.map((m, i) => row("c", m, i)).join("");
-  $("soundRow").classList.toggle("hidden", !audios.length);
-  $("modeBox").classList.toggle("hidden", !videos.length);
+  $("soundRow").classList.toggle("hidden", !audios.length); $("modeBox").classList.toggle("hidden", !videos.length);
   document.querySelectorAll(".mi button").forEach((b) => (b.onclick = () => { ({ v: videos, a: audios, c: voices })[b.dataset.k].splice(+b.dataset.i, 1); renderMedia(); }));
-  hud();
+  changed();
 }
 wireDrop("vfiles", "dropV", async (f) => { videos = await Promise.all([...f].slice(0, 3).map(readFile)); renderMedia(); });
 wireDrop("afiles", "dropA", async (f) => { audios = await Promise.all([...f].slice(0, 3).map(readFile)); renderMedia(); });
 $("vfile").addEventListener("change", async (e) => { if (e.target.files[0]) { voices = [await readFile(e.target.files[0])]; renderMedia(); } });
 
 const wordsIn = (t) => t.trim().split(/\s+/).filter(Boolean).length;
-function countScript() {
-  const w = wordsIn($("scriptText").value), secs = w / 2.4 + 1.5;
-  $("scriptCount").textContent = `${w} words, about ${secs.toFixed(0)}s`; $("scriptCount").classList.toggle("over", secs > +state.length + 0.5); hud();
-}
+function countScript() { const w = wordsIn($("scriptText").value), s = w / 2.4 + 1.5; $("scriptCount").textContent = `${w} words, about ${s.toFixed(0)}s`; $("scriptCount").classList.toggle("over", s > +state.length + 0.5); }
 $("scriptText").addEventListener("input", countScript);
 $("scriptBtn").onclick = async () => {
   try {
     const r = await post("/api/script", { brief: brief() });
     $("scripts").innerHTML = r.scripts.map((s, i) => `<button type="button" class="script" aria-pressed="false" data-i="${i}"><b>${esc(s.title)}</b>${esc(s.text)}<br><small>${s.words} words, about ${s.seconds}s</small></button>`).join("");
     $("scripts").querySelectorAll("button").forEach((b) => (b.onclick = () => {
-      $("scripts").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));
-      $("scriptText").value = r.scripts[+b.dataset.i].text; countScript();
+      $("scripts").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b)); $("scriptText").value = r.scripts[+b.dataset.i].text; countScript();
     }));
     $("scriptPrompt").textContent = " " + r.prompt; $("tips").innerHTML = r.tips.map((t) => `<li>${esc(t)}</li>`).join("");
   } catch (e) { notice(e.message); }
@@ -547,13 +506,11 @@ $("scriptBtn").onclick = async () => {
 /* recorder: records in the browser and converts to WAV so every browser works */
 let recorder = null, chunks = [], t0 = 0, tick = null;
 async function blobToWav(blob) {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const buf = await ctx.decodeAudioData(await blob.arrayBuffer()); ctx.close();
+  const ctx = new (window.AudioContext || window.webkitAudioContext)(); const buf = await ctx.decodeAudioData(await blob.arrayBuffer()); ctx.close();
   const ch = buf.getChannelData(0), n = ch.length, sr = buf.sampleRate, out = new ArrayBuffer(44 + n * 2), v = new DataView(out);
   const w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
-  w(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
-  v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
-  w(36, "data"); v.setUint32(40, n * 2, true);
+  w(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, n * 2, true);
   for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, ch[i])) * 32767, true);
   return new Blob([out], { type: "audio/wav" });
 }
@@ -564,8 +521,7 @@ $("recBtn").onclick = async () => {
     recorder = new MediaRecorder(stream); chunks = [];
     recorder.ondataavailable = (e) => chunks.push(e.data);
     recorder.onstop = async () => {
-      stream.getTracks().forEach((t) => t.stop()); clearInterval(tick); $("rec").classList.remove("live");
-      $("recBtn").classList.remove("hidden"); $("stopBtn").classList.add("hidden");
+      stream.getTracks().forEach((t) => t.stop()); clearInterval(tick); $("rec").classList.remove("live"); $("recBtn").classList.remove("hidden"); $("stopBtn").classList.add("hidden");
       try { const wav = await blobToWav(new Blob(chunks, { type: recorder.mimeType })); voices = [await readFile(new File([wav], "voiceover.wav", { type: "audio/wav" }))]; renderMedia(); }
       catch (e) { notice("That recording could not be read. Try again, or upload a file."); }
     };
@@ -575,86 +531,91 @@ $("recBtn").onclick = async () => {
 };
 $("stopBtn").onclick = () => recorder && recorder.state !== "inactive" && recorder.stop();
 
-/* ---- model select ---- */
-function mcard(r, i, chosen) {
-  const sel = chosen && i === 0 && r.eligible, locked = !r.eligible;
-  const best = chosen ? Math.max(1, chosen.ranking[0].score) : 1, match = r.eligible ? Math.round((r.score / best) * 100) : 0;
-  const proof = Math.min(3, r.evidence.length + (r.status === "verified" ? 1 : 0));
+/* ---- why this model, and change it ---- */
+function mcard(r, m) {
+  const sel = r.eligible && r.id === m.model, locked = !r.eligible;
   const why = locked ? (r.checks.find((c) => !c.ok && c.hard) || {}).text || "" : "";
-  const tags = [sel ? `<span class="tagp sel">${ic("check")}Selected</span>` : locked ? `<span class="tagp">${ic("lock")}Locked</span>` : '<span class="tagp ok">Available</span>',
+  const tags = [sel ? `<span class="tagp sel">${ic("check")}${m.overridden ? "Your pick" : "Chosen for you"}</span>` : locked ? `<span class="tagp">${ic("lock")}Can't be used</span>` : "",
     r.status === "verified" ? '<span class="tagp ok">Verified</span>' : "", r.open_weights === "yes" ? '<span class="tagp ow">Open weights</span>' : ""].join("");
+  const go = !locked && !sel ? `<div class="go"><button class="ghost" data-use="${esc(r.id)}" type="button">Use this one</button></div>` : "";
   return `<div class="mc ${sel ? "sel" : ""} ${locked ? "locked" : ""}">
     <div class="top"><h4>${esc(r.label)}</h4><div class="tags">${tags}</div></div>
-    <div class="hint">${locked ? `Locked: ${esc(why)}` : esc(r.note)}</div>
-    <div class="stat">MATCH<div class="bar"><i style="width:${match}%"></i></div><span>${match}%</span></div>
-    <div class="stat">PROOF<div class="bar"><i style="width:${proof * 33.3}%"></i></div><span>${proof} of 3</span></div>
-    <div class="stat">COST<div class="bar"><i style="width:${r.cost ? Math.min(100, r.cost / 6) : 0}%"></i></div><span>${r.cost ? `<span class="coin">${ic("coins")}${r.cost}</span>` : "n/a"}</span></div>
-    <details><summary>Why? Rules and evidence</summary>
+    <div class="hint">${locked ? `Can't be used here: ${esc(why)}` : esc(r.note)}${r.cost ? ` About ${r.cost} credits.` : ""}</div>${go}
+    <details><summary>Rules and evidence</summary>
       ${r.product_fit ? `<div class="hint">Product fit: ${esc(r.product_fit)}</div>` : ""}${r.price_note ? `<div class="hint">Price: ${esc(r.price_note)}</div>` : ""}
       <ul class="checks">${r.checks.map((c) => `<li class="${c.ok ? "" : c.hard ? "bad" : "soft"}">${esc(c.text)}</li>`).join("")}</ul>
       <ul class="ev">${r.evidence.map((e) => `<li><span class="ek ${e.kind}">${e.kind}</span>${esc(e.text)}${e.url ? ` <a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">source</a>` : ""}</li>`).join("")}</ul>
     </details></div>`;
 }
+function openModels() {
+  if (!quote) return;
+  const m = quote.model;
+  $("modelLead").textContent = m.model ? (m.overridden ? "You switched models. Pick another below, or go back to the automatic choice."
+    : "Reelmatch scored every model against your brief and picked the best fit. You can switch to any model that can do the job.")
+    : "No model can do this brief. Each card says what blocked it. Loosen the length, sound, budget or other options and try again.";
+  const back = m.overridden && m.auto_model ? `<div><button class="ghost" id="autoBtn" type="button">Back to the automatic choice</button></div>` : "";
+  $("roster").innerHTML = back + m.ranking.map((r) => mcard(r, m)).join("");
+  const apply = async (id) => { override = id; await refreshQuote(); openModels(); if ($("confirmDlg").open) fillConfirm(); };
+  $("roster").querySelectorAll("[data-use]").forEach((b) => (b.onclick = () => apply(b.dataset.use)));
+  const ab = $("autoBtn"); if (ab) ab.onclick = () => apply(null);
+  if (!$("modelDlg").open) $("modelDlg").showModal();
+}
+$("whyBtn").onclick = openModels;
 
-const setStatus = (m, err, busy) => { $("status").textContent = m; $("status").className = "status" + (err ? " err" : ""); $("prog").classList.toggle("hidden", !busy); };
-
-$("planBtn").onclick = async () => {
-  $("planBtn").disabled = true; notice("");
+/* ---- make it ---- */
+function fillConfirm() {
+  const m = quote.model;
+  $("confModel").textContent = m.label; $("confWhy").textContent = (m.overridden ? "Your pick. " : "Picked for you. ") + m.reasons.slice(0, 2).join(". ") + ".";
+  $("confText").innerHTML = `This spends about <span class="coin">${ic("coins")}${quote.credits}</span> Comfy credits on a ${quote.duration}-second draft.`;
+}
+$("makeBtn").onclick = async () => {
+  if (busy) return; notice("");
+  if (!$("consent").checked) { $("s2").scrollIntoView({ behavior: "smooth", block: "center" }); notice("Tick the rights box under your photos first."); return; }
+  $("makeBtn").disabled = true;
   try {
     const r = await post("/api/plan", payload());
-    if (!r.n_images && !(videos.length && state.video_mode !== "reference")) { notice("Add at least one photo in step 2."); return; }
-    credits = r.credits; canGenerate = !!r.model.model; planDone = true; showPhotos(r.images);
-    $("emptyPlan").classList.add("hidden"); $("planArea").classList.remove("hidden");
+    if (!r.n_images && !(videos.length && state.video_mode !== "reference")) { notice("Add at least one photo first."); return; }
+    quote = { model: r.model, credits: r.credits, duration: r.brief.duration };
+    if (!r.model.model) { openModels(); return; }
+    $("plan").value = r.plan; fillConfirm();
     $("warnings").innerHTML = r.warnings.map((w) => `<div class="warn">${ic("alert")}<span>${esc(w)}</span></div>`).join("");
-    $("roster").innerHTML = (canGenerate ? "" : `<div class="warn">${ic("alert")}<span>No model fits this brief. Loosen the length, sound, budget, open-weights, video or likeness options. The locked cards say why.</span></div>`)
-      + r.model.ranking.map((x, i) => mcard(x, i, canGenerate ? r.model : null)).join("");
-    $("plan").value = r.plan; $("planEditor").classList.toggle("hidden", !canGenerate); $("launchEmpty").classList.toggle("hidden", canGenerate);
-    setStatus(""); hud(); $("lv3").scrollIntoView({ behavior: "smooth", block: "start" });
-  } catch (e) { notice(e.message); } finally { $("planBtn").disabled = false; }
+    $("confirmDlg").showModal();
+  } catch (e) { notice(e.message); } finally { $("makeBtn").disabled = false; }
 };
-$("genBtn").onclick = () => {
-  if (!$("consent").checked) { notice("Tick the rights box in step 2 first."); return; }
-  notice(""); $("confirmText").innerHTML = `This spends about <span class="coin">${ic("coins")}${credits}</span> Comfy credits on a draft. Go ahead?`; $("confirmBox").classList.remove("hidden");
-};
-$("cancelBtn").onclick = () => $("confirmBox").classList.add("hidden");
+$("confChange").onclick = openModels;
 
-function playVideo(src) {
-  $("video").src = src; $("video").classList.remove("hidden"); $("phEmpty").classList.add("hidden");
-  $("video").play().catch(() => {}); $("dl").href = src; $("dl").classList.remove("hidden");
-}
+function playVideo(src) { $("video").src = src; $("video").classList.remove("hidden"); $("phEmpty").classList.add("hidden"); $("video").play().catch(() => {}); $("dl").href = src; $("dl").classList.remove("hidden"); }
+const setStatus = (m, err, on) => { $("status").textContent = m; $("status").className = "status" + (err ? " err" : ""); $("prog").classList.toggle("hidden", !on); };
 $("goBtn").onclick = async () => {
-  $("confirmBox").classList.add("hidden"); $("genBtn").disabled = true; notice("");
+  $("confirmDlg").close(); busy = true; $("makeBtn").disabled = true; notice("");
   $("video").classList.add("hidden"); $("dl").classList.add("hidden"); $("phEmpty").classList.remove("hidden"); $("phEmpty").textContent = "Rendering your ad";
+  $("premiere").scrollIntoView({ behavior: "smooth", block: "center" }); setStatus("Starting", false, true);
+  const done = () => { busy = false; $("makeBtn").disabled = false; };
   try {
-    const { job } = await post("/api/generate", { ...payload(), plan: $("plan").value, confirm_credits: credits });
+    const { job } = await post("/api/generate", { ...payload(), plan: $("plan").value, confirm_credits: quote.credits });
     const poll = async () => {
       let j;
-      try { j = await (await fetch("/api/jobs/" + job)).json(); } catch (e) { setStatus("Lost connection to the server.", true); $("genBtn").disabled = false; return; }
-      if (j.status === "done") {
-        finished = true; setStatus("Draft ready."); $("headline").innerHTML = `${esc($("brand").value || "Your")} ad is <span>ready.</span>`;
-        playVideo(j.video); $("genBtn").disabled = false; health(); history(); hud(); confetti(); $("premiere").scrollIntoView({ behavior: "smooth" });
-      } else if (j.status === "error") { setStatus(j.message, true); $("phEmpty").textContent = "That one did not work"; $("genBtn").disabled = false; }
+      try { j = await (await fetch("/api/jobs/" + job)).json(); } catch (e) { setStatus("Lost connection to the server.", true); done(); return; }
+      if (j.status === "done") { setStatus("Your ad is ready."); $("headline").innerHTML = `${esc($("brand").value || "Your")} ad is <span>ready.</span>`; playVideo(j.video); done(); health(); history(); confetti(); }
+      else if (j.status === "error") { setStatus(j.message, true); $("phEmpty").textContent = "That one did not work"; done(); }
       else { setStatus(j.message, false, true); setTimeout(poll, 2500); }
     };
     poll();
-  } catch (e) { notice(e.message); $("genBtn").disabled = false; }
+  } catch (e) { setStatus("", false, false); notice(e.message); done(); }
 };
 
 async function history() {
-  const { jobs } = await (await fetch("/api/jobs")).json(), done = jobs.filter((j) => j.status === "done");
-  if (!done.length) return;
-  $("hist").innerHTML = done.map((j) => `<button data-v="${esc(j.video)}"><b>${ic("film")}${esc(j.model)}</b>${j.duration}s, ${j.photos} photo${j.photos === 1 ? "" : "s"}${j.videos ? `, ${j.videos} video` : ""}${j.music ? ", music" : ""}${j.voice ? ", voice" : ""}${j.mock ? ", demo" : `, ${j.credits} credits`}</button>`).join("");
-  $("hist").querySelectorAll("button").forEach((b) => (b.onclick = () => { playVideo(b.dataset.v); $("premiere").scrollIntoView({ behavior: "smooth" }); }));
+  const { jobs } = await (await fetch("/api/jobs")).json(), d = jobs.filter((j) => j.status === "done");
+  if (!d.length) return;
+  $("hist").innerHTML = d.map((j) => `<button data-v="${esc(j.video)}"><b>${ic("film")}${esc(j.model)}</b>${j.duration}s, ${j.photos} photo${j.photos === 1 ? "" : "s"}${j.videos ? `, ${j.videos} video` : ""}${j.music ? ", music" : ""}${j.voice ? ", voice" : ""}${j.mock ? ", demo" : `, ${j.credits} credits`}</button>`).join("");
+  $("hist").querySelectorAll("button").forEach((b) => (b.onclick = () => { playVideo(b.dataset.v); $("premiere").scrollIntoView({ behavior: "smooth", block: "center" }); }));
 }
-
 function confetti() {
   if (reduce) return;
-  const c = $("fx"), x = c.getContext("2d"); c.width = innerWidth; c.height = innerHeight;
-  const cols = ["#d8f36a", "#f6a9c4", "#fff4de", "#290d17"];
+  const c = $("fx"), x = c.getContext("2d"); c.width = innerWidth; c.height = innerHeight; const cols = ["#d8f36a", "#f6a9c4", "#fff4de", "#290d17"];
   const ps = Array.from({ length: 130 }, () => ({ x: Math.random() * c.width, y: -20 - Math.random() * c.height * .5, r: 4 + Math.random() * 5, vx: -2 + Math.random() * 4, vy: 2 + Math.random() * 4, a: Math.random() * 6, c: cols[Math.floor(Math.random() * 4)] }));
   let f = 0;
-  (function step() { x.clearRect(0, 0, c.width, c.height);
-    ps.forEach((p) => { p.x += p.vx; p.y += p.vy; p.a += .1; x.save(); x.translate(p.x, p.y); x.rotate(p.a); x.fillStyle = p.c; x.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); x.restore(); });
+  (function step() { x.clearRect(0, 0, c.width, c.height); ps.forEach((p) => { p.x += p.vx; p.y += p.vy; p.a += .1; x.save(); x.translate(p.x, p.y); x.rotate(p.a); x.fillStyle = p.c; x.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); x.restore(); });
     if (++f < 150) requestAnimationFrame(step); else x.clearRect(0, 0, c.width, c.height); })();
 }
 init();

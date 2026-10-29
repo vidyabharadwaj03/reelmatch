@@ -13,7 +13,7 @@ from . import pipeline
 from . import media, options
 from .planner import make_plan
 from .script import make_scripts
-from .registry import BY_ID, choose
+from .registry import BY_ID, apply_override, choose
 
 STATIC = Path(__file__).parent / "static"
 IMG_EXT = {".jpg", ".jpeg", ".png", ".webp"}
@@ -237,6 +237,24 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:  # never leave the page hanging on a server bug
             self._json({"error": f"Server error: {type(e).__name__}"}, 500)
 
+    def _quote(self, body) -> dict:
+        """Which model would be used, and what it costs. Takes counts, not files, so the page can ask it on every tap."""
+        brief = clean_brief(body.get("brief") or {})
+        counts = body.get("counts") or {}
+        n = {k: max(0, min(int(counts.get(k, 0) or 0), 20)) for k in ("images", "videos", "audios", "voices")}
+        if not n["videos"]:
+            brief["video_mode"] = "reference"
+        elif brief["video_mode"] == "edit" and body.get("video_seconds"):
+            brief["duration"] = min(30, max(4, math.ceil(min(float(body["video_seconds"]), 15))))
+        brief.update(n_videos=n["videos"], n_audio=n["audios"], n_voice=n["voices"])
+        choice = choose(brief, n["images"])
+        ignored = False
+        try:
+            choice = apply_override(choice, body.get("model_id"))
+        except ValueError:
+            ignored = True  # a stale override after the brief changed: fall back to the automatic pick
+        return {"model": choice, "credits": choice["cost"], "duration": brief["duration"], "override_ignored": ignored}
+
     def _post(self, body):
         if self.path == "/api/photos":
             return self._json({"images": register(gather_images(body))})
@@ -245,6 +263,8 @@ class Handler(BaseHTTPRequestHandler):
             if b["video_mode"] != "reference":
                 b["description"] = ""  # in extend or edit mode the description is about the clip, not the brand
             return self._json(make_scripts(b))
+        if self.path == "/api/quote":
+            return self._json(self._quote(body))
         if self.path not in ("/api/plan", "/api/generate"):
             return self._json({"error": "not found"}, 404)
 
@@ -265,6 +285,10 @@ class Handler(BaseHTTPRequestHandler):
             brief["duration"] = min(30, max(4, math.ceil(media.duration_seconds(videos[0]))))
         brief.update(n_videos=len(videos), n_audio=len(audios), n_voice=len(voices))
         choice = choose(brief, len(images))
+        try:
+            choice = apply_override(choice, body.get("model_id"))
+        except ValueError as e:
+            raise BadRequest(str(e))
         if voices:
             final = brief["duration"] + (media.duration_seconds(videos[0]) if mode.startswith("extend") else 0)
             vlen = media.duration_seconds(voices[0])

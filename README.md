@@ -1,18 +1,19 @@
 # Reelmatch ♡
 
-Describe your campaign with a few taps, drop in photos, and get a vertical UGC-style ad draft. Reelmatch scores every video model
-against your brief, picks the one that fits, shows its reasoning, and renders the draft through Comfy Cloud.
+Describe your campaign with a few taps, drop in photos, and press one button to get a vertical UGC-style ad draft.
+Reelmatch picks the video model for you behind the scenes and renders the draft through Comfy Cloud.
+If you are curious, "Why this model?" shows how every model scored, and you can switch to any model that can do the job.
 
 Built for the Comfy "Open Source Higgsfield" build night. Themed after Soraa, with a little game on top.
 
 ## What you can do
 
+- **Two simple steps**: your campaign, then your photos. A bar at the bottom always shows the model that was picked and about what it will cost.
 - **Build a campaign with buttons**: product-only or people ads, goal, platform, length, sound, style, camera, setting, audience, call to action, coin budget. Text boxes are only for describing things.
 - **Add media**: photos (the cast), a reference video, your own music, and your own voice.
 - **Get a script** sized to your ad length, then read it aloud into the built-in recorder (or upload a recording). Your voice becomes the ad's voiceover, with music ducking underneath it.
 - **Extend or edit a clip** you already have (Seedance 2.5).
-- **See why a model was chosen**: every model gets a card with rules, evidence and a lock if it cannot do the job.
-- **See your progress**: a four-step track and a brief-strength meter, plus confetti when a draft finishes.
+- **See why a model was chosen, and change it**: every model has a card with its rules and evidence, and models that cannot do the job say why.
 
 ## Run it
 

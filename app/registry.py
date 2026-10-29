@@ -215,9 +215,27 @@ def choose(brief: dict, n_images: int) -> dict:
     ranking.sort(key=lambda r: (not r["eligible"], -r["score"]))
     best = ranking[0]
     if not best["eligible"]:
-        return {"model": None, "label": None, "reasons": ["No model fits this brief."], "ranking": ranking, "cost": None}
+        return {"model": None, "label": None, "reasons": ["No model fits this brief."], "ranking": ranking, "cost": None,
+                "auto_model": None, "overridden": False}
     others = [r for r in ranking[1:] if r["eligible"]]
     reasons = [c["text"] for c in best["checks"] if c["ok"]]
     if others:
         reasons.append(f"Beat {others[0]['label']} on score ({best['score']} vs {others[0]['score']})")
-    return {"model": best["id"], "label": best["label"], "reasons": reasons, "ranking": ranking, "cost": best["cost"]}
+    return {"model": best["id"], "label": best["label"], "reasons": reasons, "ranking": ranking, "cost": best["cost"],
+            "auto_model": best["id"], "overridden": False}
+
+
+def apply_override(choice: dict, model_id: str | None) -> dict:
+    """Let a user switch to any model that can do the job. Models that cannot are refused with the reason."""
+    if not model_id or model_id == choice["model"]:
+        return choice
+    r = next((x for x in choice["ranking"] if x["id"] == model_id), None)
+    if r is None:
+        raise ValueError("Unknown model.")
+    if not r["eligible"]:
+        why = next((c["text"] for c in r["checks"] if not c["ok"] and c["hard"]), "it cannot do this brief")
+        raise ValueError(f"{r['label']} cannot be used here: {why}.")
+    out = dict(choice)
+    out.update(model=r["id"], label=r["label"], cost=r["cost"], overridden=True,
+               reasons=[c["text"] for c in r["checks"] if c["ok"]] + ["You picked this model"])
+    return out
