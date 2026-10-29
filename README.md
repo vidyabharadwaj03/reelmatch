@@ -12,7 +12,7 @@ Built for the Comfy "Open Source Higgsfield" build night. Themed after Soraa, wi
 - **Get a script** sized to your ad length, then read it aloud into the built-in recorder (or upload a recording). Your voice becomes the ad's voiceover, with music ducking underneath it.
 - **Extend or edit a clip** you already have (Seedance 2.5).
 - **See why a model was chosen**: every model gets a card with rules, evidence and a lock if it cannot do the job.
-- **Play along**: Ad Power meter, unlockable badges, a four-level quest track and confetti when a draft finishes.
+- **See your progress**: a four-step track and a brief-strength meter, plus confetti when a draft finishes.
 
 ## Run it
 
@@ -72,5 +72,8 @@ The form requires confirmation that you own the photos, or everyone shown has ag
 - Only Seedance 2.5 and Wan 2.7 have adapters. The rest are listed so the chooser can explain why they are out.
 - Run live and tested: generating from photos. Built from the node spec but **not yet run live**: sending reference video or audio to Seedance, extend and edit.
   Mixing, stitching, scripts and the recorder's WAV conversion are tested offline. The microphone itself needs a human and a browser permission.
+
+The look follows Soraa's own site: plum, cream and lime, with Syne and Inter loaded from Google Fonts (they fall back to system fonts offline).
+Icons are inline line icons in the Lucide style (ISC license). No emojis.
 
 MIT licensed.
