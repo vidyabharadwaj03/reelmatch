@@ -113,6 +113,12 @@
   .phone video { width: 100%; height: 100%; object-fit: cover; display: block; }
   .phone .ph-empty { color: #d9cdf5; font-weight: 700; padding: 16px; text-align: center; font-size: 14px; }
   a.dl { color: var(--pink); font-weight: 800; }
+  .drop.small { padding: 12px; font-size: 14px; }
+  .mi { display: flex; align-items: center; gap: 10px; margin-top: 8px; background: #fff6fb; border: 2px solid var(--line); border-radius: 14px; padding: 8px 10px; font-size: 13px; font-weight: 600; }
+  .mi video { width: 48px; height: 64px; object-fit: cover; border-radius: 8px; background: #000; }
+  .mi audio { height: 34px; max-width: 190px; }
+  .mi span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .mi .x { padding: 4px 10px; font-size: 13px; }
   .hist { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
   .hist button { text-align: left; background: #fff; color: var(--text); border: 2px solid var(--line); box-shadow: none; border-radius: 16px; font-weight: 600; font-size: 13px; padding: 10px 12px; }
 </style>
@@ -132,7 +138,7 @@
       <div class="tabs" role="tablist" aria-label="Campaign sections">
         <button role="tab" aria-selected="true" aria-controls="tab-basics" id="t-basics" data-tab="basics">Basics</button>
         <button role="tab" aria-selected="false" aria-controls="tab-look" id="t-look" data-tab="look">Look &amp; feel</button>
-        <button role="tab" aria-selected="false" aria-controls="tab-photos" id="t-photos" data-tab="photos">Photos &amp; rights</button>
+        <button role="tab" aria-selected="false" aria-controls="tab-photos" id="t-photos" data-tab="photos">Media &amp; rights</button>
       </div>
 
       <div id="tab-basics" role="tabpanel" aria-labelledby="t-basics">
@@ -170,6 +176,17 @@
         <details><summary>Use a folder on this computer instead</summary>
           <label for="folder">Folder path</label><input type="text" id="folder" value="assets/soraa">
           <div class="hint">Used only when no photos are dropped above.</div></details>
+        <div class="lbl">Reference video (optional)</div>
+        <label class="drop small" id="dropV" for="vfiles"><b>Add a video</b> to copy its motion, camera or vibe<br><span class="hint">MP4, MOV or WebM, up to 3 clips, 40 MB each. Only some models take video.</span>
+          <input id="vfiles" type="file" accept="video/mp4,video/quicktime,video/webm" multiple></label>
+        <div id="vlist"></div>
+        <div class="lbl">Music or voice (optional)</div>
+        <label class="drop small" id="dropA" for="afiles"><b>Add music or a voiceover</b><br><span class="hint">MP3, WAV or M4A, up to 3 files, 15 MB each.</span>
+          <input id="afiles" type="file" accept="audio/mpeg,audio/wav,audio/mp4,audio/x-m4a,.mp3,.wav,.m4a" multiple></label>
+        <div id="alist"></div>
+        <label class="check hidden" id="soundRow"><input type="checkbox" id="soundtrack" checked>
+          <span>Use my first track as the final soundtrack
+            <span class="hint" style="display:block">We mix it into the finished video ourselves, so it works with every model. Models that take audio also use it as a rhythm reference.</span></span></label>
         <label for="s-budget">Credit budget</label><select id="s-budget"></select>
         <label class="check"><input type="checkbox" id="consent"><span id="consentText"></span></label>
         <label class="check" id="kycRow"><input type="checkbox" id="kyc">
@@ -260,8 +277,8 @@ function onSubject() {
   const s = state.subject;
   $("kycRow").classList.toggle("hidden", s === "product");
   if (s === "product") $("kyc").checked = false;
-  $("consentText").textContent = s === "product" ? "I own or have the rights to these product photos and brand assets."
-    : "These are my own photos, or everyone shown has said I can use their likeness in an ad.";
+  $("consentText").textContent = s === "product" ? "I own or have the rights to these product photos, brand assets and any video or music I add."
+    : "These are my own photos, or everyone shown has said I can use their likeness in an ad. I have the rights to any video or music I add.";
   $("descLabel").textContent = s === "product" ? "Describe the product (what it is, scent, material, label)" : "Describe your brand or product";
 }
 
@@ -285,7 +302,7 @@ const brief = () => ({
   style: state.style, camera: state.camera, setting: $("s-setting").value, audience: $("s-audience").value, cta: $("s-cta").value,
   description: $("description").value, feel: $("feel").value, message: $("message").value, include: $("include").value, avoid: $("avoid").value,
   needs_audio: state.audio === "music", budget: $("s-budget").value, open_weights_only: $("ow").checked,
-  consent: $("consent").checked, verified_likeness: $("kyc").checked,
+  consent: $("consent").checked, verified_likeness: $("kyc").checked, soundtrack: $("soundtrack").checked,
 });
 const post = async (url, body) => {
   const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -293,7 +310,8 @@ const post = async (url, body) => {
   if (!r.ok) throw new Error(j.error || r.statusText);
   return j;
 };
-const payload = () => ({ brief: brief(), folder: $("folder").value, uploads });
+const payload = () => ({ brief: brief(), folder: $("folder").value, uploads,
+  videos: videos.map(({ name, data }) => ({ name, data })), audios: audios.map(({ name, data }) => ({ name, data })) });
 
 async function health() {
   try {
@@ -324,6 +342,37 @@ const drop = $("drop");
 ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
 drop.addEventListener("drop", (e) => takeFiles(e.dataTransfer.files));
 $("folder").addEventListener("change", refreshPhotos);
+
+/* ---- reference video and music ---- */
+let videos = [], audios = [];
+const readFile = (f) => new Promise((res) => {
+  const fr = new FileReader();
+  fr.onload = () => res({ name: f.name, data: fr.result, url: URL.createObjectURL(f), mb: (f.size / 1048576).toFixed(1) });
+  fr.readAsDataURL(f);
+});
+function renderMedia() {
+  const row = (k, m, i) => `<div class="mi">${k === "v" ? `<video src="${m.url}" muted playsinline></video>` : `<audio src="${m.url}" controls></audio>`}
+    <span>${esc(m.name)} · ${m.mb} MB</span><button type="button" class="ghost x" data-k="${k}" data-i="${i}" aria-label="Remove ${esc(m.name)}">✕</button></div>`;
+  $("vlist").innerHTML = videos.map((m, i) => row("v", m, i)).join("");
+  $("alist").innerHTML = audios.map((m, i) => row("a", m, i)).join("");
+  $("soundRow").classList.toggle("hidden", !audios.length);
+  document.querySelectorAll(".mi .x").forEach((b) => (b.onclick = () => {
+    (b.dataset.k === "v" ? videos : audios).splice(+b.dataset.i, 1); renderMedia();
+  }));
+}
+const wire = (inputId, dropId, kind) => {
+  const take = async (files) => {
+    const got = await Promise.all([...files].slice(0, 3).map(readFile));
+    if (kind === "v") videos = got; else audios = got;
+    renderMedia();
+  };
+  $(inputId).addEventListener("change", (e) => take(e.target.files));
+  const d = $(dropId);
+  ["dragenter", "dragover"].forEach((ev) => d.addEventListener(ev, (e) => { e.preventDefault(); d.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((ev) => d.addEventListener(ev, (e) => { e.preventDefault(); d.classList.remove("over"); }));
+  d.addEventListener("drop", (e) => take(e.dataTransfer.files));
+};
+wire("vfiles", "dropV", "v"); wire("afiles", "dropA", "a");
 
 /* ---- model scorecard ---- */
 const checkList = (cs) => `<ul class="checks">${cs.map((c) => `<li class="${c.ok ? "" : c.hard ? "bad" : "soft"}">${esc(c.text)}</li>`).join("")}</ul>`;
@@ -356,7 +405,7 @@ $("planBtn").onclick = async () => {
   $("planBtn").disabled = true; notice("");
   try {
     const r = await post("/api/plan", payload());
-    if (!r.n_images) { notice("No photos found. Add some on the Photos & rights tab."); return; }
+    if (!r.n_images) { notice("No photos found. Add some on the Media & rights tab."); return; }
     credits = r.credits; canGenerate = !!r.model.model; showPhotos(r.images);
     $("emptyPlan").classList.add("hidden"); $("planArea").classList.remove("hidden");
     $("plan").value = r.plan; $("planEditor").classList.toggle("hidden", !canGenerate);
@@ -365,7 +414,7 @@ $("planBtn").onclick = async () => {
 };
 
 $("genBtn").onclick = () => {
-  if (!$("consent").checked) { notice("Tick the photo rights box on the Photos & rights tab first."); return; }
+  if (!$("consent").checked) { notice("Tick the rights box on the Media & rights tab first."); return; }
   notice(""); $("confirmText").textContent = `This renders a draft and spends about ${credits} Comfy credits. Go for it?`;
   $("confirmBox").classList.remove("hidden");
 };
@@ -395,7 +444,7 @@ async function history() {
   const { jobs } = await (await fetch("/api/jobs")).json();
   const done = jobs.filter((j) => j.status === "done");
   if (!done.length) return;
-  $("hist").innerHTML = done.map((j) => `<button data-v="${esc(j.video)}"><b>${esc(j.model)}</b><br>${j.duration}s · ${j.photos} photo${j.photos > 1 ? "s" : ""}${j.mock ? " · mock" : ` · ~${j.credits} credits`}<br>${new Date(j.created * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</button>`).join("");
+  $("hist").innerHTML = done.map((j) => `<button data-v="${esc(j.video)}"><b>${esc(j.model)}</b><br>${j.duration}s · ${j.photos} photo${j.photos > 1 ? "s" : ""}${j.videos ? ` · ${j.videos} video` : ""}${j.music ? " · music" : ""}${j.mock ? " · mock" : ` · ~${j.credits} credits`}<br>${new Date(j.created * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</button>`).join("");
   $("hist").querySelectorAll("button").forEach((b) => (b.onclick = () => { playVideo(b.dataset.v); window.scrollTo({ top: $("video").getBoundingClientRect().top + scrollY - 200, behavior: "smooth" }); }));
 }
 init();

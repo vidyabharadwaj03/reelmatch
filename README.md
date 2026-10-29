@@ -4,7 +4,7 @@ A local web app where a brand describes a campaign and drops in photos, and gets
 Built with ComfyUI (Comfy Cloud and the Comfy SDK) for the Open Source Higgsfield build night.
 
 1. Build the campaign with buttons and dropdowns: product or people, goal, platform, length, sound, style, camera, setting, audience, call to action, budget. Text boxes are only for describing the brand, the feeling and any must-haves.
-2. Drop in photos (or point at a folder).
+2. Drop in photos (or point at a folder). Optionally add a reference video (to copy motion or vibe) and your own music or voiceover.
 3. Collab Studio scores every video model against the brief, picks one, and shows why.
 4. Edit the shot plan, confirm the credit cost, and get a 9:16 draft with audio.
 
@@ -50,6 +50,13 @@ See `docs/MODEL_RESEARCH.md` for sources, caveats and how the scores are weighte
 
 Safety: photos must be real JPG, PNG or WebP under 12 MB; generating needs a permission checkbox and an exact credit confirmation;
 each job has a credit limit (`COLLAB_MAX_CREDITS`, default 600); the server only listens on localhost.
+
+## Reference video and music
+
+- Your music is mixed into the finished video by Collab Studio (ffmpeg, looped and faded to fit), so it works with every model.
+- Models that also accept audio or video references (Seedance 2.5 takes up to 6 videos and 6 audio clips) get them as references for motion, style and rhythm.
+- A reference video rules out models that cannot take one. The scorecard shows this.
+- Mixing is tested. Sending video and audio to Seedance is built from the node spec but has not been run live yet.
 
 ## Likeness
 

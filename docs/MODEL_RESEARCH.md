@@ -40,6 +40,14 @@ Treat any single refusal as route-specific, not as a model-wide rule.
 - Real faces: every provider restricts real-person photos. Seedance has a verification route. One forum thread reports Veo rejecting a consenting founder's photos.
   A claim that Kling has a face-model feature could not be confirmed.
 
+## Video and audio inputs
+
+- Seedance 2.5 reference-to-video: up to 20 images, 6 video clips and 6 audio clips (Comfy template description). The node spec shows `model.reference_videos.video_N` and `model.reference_audios.audio_N` slots, and a `task_type` of reference, edit or extend.
+  Edit and extend are not used yet, but they would let a brand change or lengthen a clip it already has.
+- MiniMax H3 and HeyGen reference-to-video: up to 3 videos and 3 audio clips (Comfy template descriptions).
+- Audio references steer rhythm and sound. They do not guarantee a specific song appears, so Collab Studio mixes the brand's own track into the finished video itself.
+- Not yet checked: the size, length and resolution limits Seedance puts on reference videos.
+
 ## MiniMax H3 and the Open Weights Only prize
 
 - Open weights were released Aug 3, 2026 with native ComfyUI support. The open release is the 768p base model, not the 2K API version.

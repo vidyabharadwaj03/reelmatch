@@ -1,7 +1,10 @@
 import base64
+import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 
-from app import server
+from app import media, server
 from app.planner import make_plan
 from app.registry import choose
 
@@ -67,6 +70,66 @@ class SubjectTests(unittest.TestCase):
             for e in r["evidence"]:
                 if e["kind"] == "blog":
                     self.assertTrue(e["url"], r["id"])
+
+
+class MediaInputTests(unittest.TestCase):
+    def test_reference_video_rules_out_models_that_cannot_take_it(self):
+        r = choose({"duration": 5, "subject": "product", "n_videos": 1}, 1)
+        self.assertEqual(r["model"], "seedance-2.5-draft")
+        wan = next(x for x in r["ranking"] if x["id"] == "wan-2.7-i2v")
+        self.assertFalse(wan["eligible"])
+        self.assertTrue(any("Cannot take a reference video" in c["text"] for c in wan["checks"]))
+
+    def test_music_is_mixed_in_so_silent_models_still_fit(self):
+        r = choose({"duration": 5, "subject": "product", "n_audio": 1, "soundtrack": True}, 1)
+        wan = next(x for x in r["ranking"] if x["id"] == "wan-2.7-i2v")
+        self.assertTrue(wan["eligible"])
+        self.assertEqual(r["model"], "wan-2.7-i2v")
+
+    def test_without_mixing_a_silent_model_is_out_again(self):
+        r = choose({"duration": 5, "subject": "product", "n_audio": 1, "soundtrack": False}, 1)
+        wan = next(x for x in r["ranking"] if x["id"] == "wan-2.7-i2v")
+        self.assertFalse(wan["eligible"])
+
+    def test_seedance_graph_gets_media_nodes_only_when_media_is_given(self):
+        from app.pipeline import build_seedance_graph
+        plain = build_seedance_graph("p", ["a.jpg"], 8)["789"]["inputs"]
+        self.assertEqual(plain["model.task_type"], "auto")
+        self.assertFalse([k for k in plain if "reference_videos" in k or "reference_audios" in k])
+        full = build_seedance_graph("p", ["a.jpg"], 8, ["v.mp4"], ["m.mp3"])
+        self.assertEqual(full["789"]["inputs"]["model.task_type"], "reference")
+        self.assertEqual(full["801"]["class_type"], "LoadVideo")
+        self.assertEqual(full["821"]["class_type"], "LoadAudio")
+
+    def test_sniffers(self):
+        self.assertTrue(media.sniff_video(b"\x00\x00\x00\x18ftypmp42"))
+        self.assertTrue(media.sniff_audio(b"ID3\x03\x00"))
+        self.assertTrue(media.sniff_audio(b"RIFF\x00\x00\x00\x00WAVEfmt "))
+        self.assertFalse(media.sniff_video(b"<html>nope</html>"))
+        self.assertFalse(media.sniff_audio(b"MZ not audio at all"))
+
+    def test_upload_rejects_fake_video_and_wrong_type(self):
+        fake = base64.b64encode(b"this is plain text pretending").decode()
+        with self.assertRaises(server.BadRequest):
+            server.save_media([{"name": "x.mp4", "data": fake}], "video")
+        with self.assertRaises(server.BadRequest):
+            server.save_media([{"name": "x.avi", "data": fake}], "video")
+        with self.assertRaises(server.BadRequest):
+            server.save_media([{"name": "x.mp3", "data": fake}], "audio")
+
+    def test_mixing_replaces_the_sound_and_keeps_the_length(self):
+        ff = media.ffmpeg_exe()
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            v, a, out = d / "v.mp4", d / "a.wav", d / "out.mp4"
+            subprocess.run([ff, "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=160x284:rate=24", "-f", "lavfi", "-i",
+                            "anullsrc=r=44100:cl=mono", "-t", "3", "-pix_fmt", "yuv420p", "-shortest", str(v)], check=True)
+            subprocess.run([ff, "-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=1", str(a)], check=True)
+            media.mux_soundtrack(v, a, out)  # 1s track looped under a 3s video
+            self.assertAlmostEqual(media.duration_seconds(out), media.duration_seconds(v), delta=0.15)
+            banner = subprocess.run([ff, "-hide_banner", "-i", str(out)], capture_output=True, text=True).stderr
+            self.assertIn("Audio:", banner)
+            self.assertIn("Video:", banner)
 
 
 class PlannerTests(unittest.TestCase):

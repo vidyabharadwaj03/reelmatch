@@ -9,7 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import pipeline
-from . import options
+from . import media, options
 from .planner import make_plan
 from .registry import BY_ID, choose
 
@@ -67,6 +67,35 @@ def save_uploads(uploads: list[dict]) -> list[Path]:
     return paths
 
 
+def save_media(items: list[dict], kind: str) -> list[Path]:
+    """Reference videos and music: check extension, size and real file type before keeping them."""
+    exts, limit, cap, sniff = ((media.VIDEO_EXT, media.MAX_VIDEO_BYTES, media.MAX_VIDEOS, media.sniff_video) if kind == "video"
+                               else (media.AUDIO_EXT, media.MAX_AUDIO_BYTES, media.MAX_AUDIOS, media.sniff_audio))
+    dest = pipeline.OUTPUTS / "uploads"
+    dest.mkdir(parents=True, exist_ok=True)
+    paths = []
+    for u in (items or [])[:cap]:
+        name = re.sub(r"[^A-Za-z0-9._-]", "_", str(u.get("name", f"{kind}.bin")))[:80]
+        if Path(name).suffix.lower() not in exts:
+            raise BadRequest(f"{name}: supported {kind} types are {', '.join(sorted(exts))}.")
+        try:
+            data = base64.b64decode(str(u.get("data", "")).split(",")[-1], validate=True)
+        except (binascii.Error, ValueError):
+            raise BadRequest(f"{name}: the file could not be read.")
+        if len(data) > limit:
+            raise BadRequest(f"{name} is over {limit // 1024 // 1024} MB. Please trim or compress it.")
+        if not sniff(data[:16]):
+            raise BadRequest(f"{name} does not look like a real {kind} file.")
+        p = dest / name
+        p.write_bytes(data)
+        paths.append(p)
+    return paths
+
+
+def gather_media(body: dict) -> tuple[list[Path], list[Path]]:
+    return save_media(body.get("videos"), "video"), save_media(body.get("audios"), "audio")
+
+
 def gather_images(body: dict) -> list[Path]:
     """Uploaded photos win over the folder, so a brand can drop files without clearing the path."""
     ups = save_uploads(body.get("uploads") or [])
@@ -106,7 +135,7 @@ def clean_brief(raw: dict) -> dict:
         "description": t("description"), "feel": t("feel", 160), "message": t("message", 160),
         "include": t("include", 200), "avoid": t("avoid", 200),
         "needs_audio": bool(raw.get("needs_audio", True)), "budget": budget,
-        "open_weights_only": bool(raw.get("open_weights_only")),
+        "open_weights_only": bool(raw.get("open_weights_only")), "soundtrack": bool(raw.get("soundtrack", True)),
         "consent": bool(raw.get("consent")), "verified_likeness": bool(raw.get("verified_likeness")) and subject != "product",
     }
 
@@ -211,6 +240,8 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/plan":
             brief = clean_brief(body.get("brief") or {})
             images = gather_images(body)
+            videos, audios = gather_media(body)
+            brief.update(n_videos=len(videos), n_audio=len(audios))
             choice = choose(brief, len(images))
             return self._json({"plan": make_plan(brief, len(images)), "model": choice, "n_images": len(images),
                                "images": register(images), "credits": choice["cost"], "brief": brief})
@@ -221,6 +252,8 @@ class Handler(BaseHTTPRequestHandler):
             images = gather_images(body)
             if not images:
                 raise BadRequest("Add at least one photo.")
+            videos, audios = gather_media(body)
+            brief.update(n_videos=len(videos), n_audio=len(audios))
             choice = choose(brief, len(images))  # decided here, never trusted from the browser
             if not choice["model"]:
                 raise BadRequest("No model fits this brief. Loosen the length, sound, budget or likeness options.")
@@ -235,7 +268,10 @@ class Handler(BaseHTTPRequestHandler):
                 raise BadRequest("The shot plan is empty.")
             if model.max_refs:
                 images = images[:model.max_refs]
-            return self._json({"job": pipeline.start_job(model, plan, images, brief["duration"])})
+            videos = videos[:model.video_refs]
+            soundtrack = audios[0] if audios and brief["soundtrack"] else None
+            refs_audio = audios[:model.audio_refs]
+            return self._json({"job": pipeline.start_job(model, plan, images, brief["duration"], videos, refs_audio, soundtrack)})
         self._json({"error": "not found"}, 404)
 
 

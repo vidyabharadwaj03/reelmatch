@@ -6,7 +6,7 @@ Evidence labels:
   blog     - a web article or forum post (often from vendors; directional only)
 Nothing here is a benchmark. See docs/MODEL_RESEARCH.md for sources and caveats.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 SEEDANCE_DRAFT_CREDITS_PER_SECOND = 31.2  # ran: 249 credits for 8s, 467 for 15s (480p draft)
 WAN_5S_CREDITS = 105.5  # ran: billed for one 5s 720p clip
@@ -29,6 +29,8 @@ class VideoModel:
     product_fit: str = ""
     price_note: str = ""
     evidence: tuple = field(default_factory=tuple)  # (label, text, url)
+    video_refs: int = 0  # reference videos it accepts
+    audio_refs: int = 0  # reference audio clips it accepts
 
     def cost(self, duration: int) -> int | None:
         if self.id == "seedance-2.5-draft":
@@ -110,6 +112,14 @@ MODELS = [
                price_note="About 352 credits for a 5s run (Comfy estimator).",
                evidence=(("comfy", "Needs one liveness verification per real-person portrait", SEEDANCE_DOCS),)),
 ]
+# Reference video and audio inputs, from Comfy's template descriptions and the Seedance node spec.
+_MEDIA = {
+    "seedance-2.5-draft": (6, 6, ("comfy", "Reference-to-video template takes up to 20 images, 6 video clips and 6 audio clips; the node can also edit or extend a clip", "")),
+    "minimax-h3-r2v": (3, 3, ("comfy", "Template takes up to 3 videos and 3 audio clips alongside the images", "")),
+    "heygen-video-1-r2v": (3, 3, ("comfy", "Template takes up to 3 videos and 3 audio clips alongside the images", "")),
+}
+MODELS = [replace(m, video_refs=_MEDIA[m.id][0], audio_refs=_MEDIA[m.id][1], evidence=m.evidence + (_MEDIA[m.id][2],))
+          if m.id in _MEDIA else m for m in MODELS]
 BY_ID = {m.id: m for m in MODELS}
 
 
@@ -138,8 +148,21 @@ def _checks(m: VideoModel, brief: dict, n_images: int) -> tuple[list[dict], bool
             add(True, f"Uses all {n_images} photo{'s' if n_images != 1 else ''}")
         else:
             add(False, f"Takes {m.max_refs} photo, you gave {n_images}: the rest would be ignored", hard=False)
-    if brief.get("needs_audio", True):
+    n_videos, n_audio = int(brief.get("n_videos", 0)), int(brief.get("n_audio", 0))
+    mixing = n_audio > 0 and brief.get("soundtrack", True)
+    if mixing:
+        add(True, "Your music is mixed in as the soundtrack after rendering")
+    elif brief.get("needs_audio", True):
         add(m.audio, "Generates sound" if m.audio else "No generated sound, and the brief needs it")
+    if n_videos:
+        if m.video_refs >= n_videos:
+            add(True, f"Takes your reference video{'s' if n_videos > 1 else ''} (up to {m.video_refs})")
+        elif m.video_refs:
+            add(False, f"Takes up to {m.video_refs} reference videos, you gave {n_videos}: the rest would be ignored", hard=False)
+        else:
+            add(False, "Cannot take a reference video")
+    if n_audio and m.audio_refs:
+        add(True, "Also uses your audio as a rhythm and sound reference", hard=False)
     if subject == "product":
         add(True, "No people on screen, so likeness rules do not apply", hard=False)
     else:
@@ -171,6 +194,7 @@ def choose(brief: dict, n_images: int) -> dict:
             score = 100 + (10 if m.status == "verified" else 0)
             score += 20 if (m.max_refs is None or n_images <= m.max_refs) else 0
             score += 5 if (subject == "product" and m.product_fit) else 0
+            score += 3 if (int(brief.get("n_audio", 0)) and m.audio_refs) else 0
             score += 15 if (subject != "product" and m.people == "ok") else 0
             score -= (cost or 0) / 10  # cheaper wins among models that fit
         ranking.append({"id": m.id, "label": m.label, "status": m.status, "note": m.note, "eligible": eligible,
