@@ -9,6 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import pipeline
+from . import options
 from .planner import make_plan
 from .registry import BY_ID, choose
 
@@ -87,14 +88,26 @@ def clean_brief(raw: dict) -> dict:
         raise BadRequest("Budget must be a number of credits.")
     if budget is not None and budget <= 0:
         budget = None
-    goal = raw.get("goal", "awareness")
-    t = lambda k, n=200: str(raw.get(k, "")).strip()[:n]
+
+    def one(group, default):
+        v = str(raw.get(group, default))
+        return v if v in options.values(group) else default
+
+    def many(group):
+        picked = raw.get(group) or []
+        return [v for v in picked if str(v) in options.values(group)][:6] if isinstance(picked, list) else []
+
+    t = lambda k, n=300: str(raw.get(k, "")).strip()[:n]
+    subject = one("subject", "people")
     return {
-        "brand": t("brand", 60) or "the brand", "goal": goal if goal in GOALS else "awareness",
-        "platform": t("platform", 30) or "TikTok", "duration": duration, "tone": t("tone", 80) or "playful and confident",
-        "message": t("message"), "include": t("include"), "avoid": t("avoid"),
+        "brand": t("brand", 60) or "the brand", "subject": subject, "goal": one("goal", "awareness"),
+        "platform": one("platform", "TikTok"), "duration": duration, "style": many("style"), "camera": many("camera"),
+        "setting": one("setting", "street_night"), "audience": one("audience", "everyone"), "cta": one("cta", "none"),
+        "description": t("description"), "feel": t("feel", 160), "message": t("message", 160),
+        "include": t("include", 200), "avoid": t("avoid", 200),
         "needs_audio": bool(raw.get("needs_audio", True)), "budget": budget,
-        "consent": bool(raw.get("consent")), "verified_likeness": bool(raw.get("verified_likeness")),
+        "open_weights_only": bool(raw.get("open_weights_only")),
+        "consent": bool(raw.get("consent")), "verified_likeness": bool(raw.get("verified_likeness")) and subject != "product",
     }
 
 
@@ -157,6 +170,8 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path in ("/", "/index.html"):
             return self._file(STATIC / "index.html")
+        if path == "/api/options":
+            return self._json(options.as_json())
         if path == "/api/health":
             return self._json({"mock": pipeline.MOCK, "key": pipeline.key_present(),
                                "max_credits": pipeline.MAX_JOB_CREDITS, "session_credits": pipeline.LEDGER["credits"]})
