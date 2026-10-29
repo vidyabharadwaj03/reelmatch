@@ -206,7 +206,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(options.as_json())
         if path == "/api/health":
             return self._json({"mock": pipeline.MOCK, "key": pipeline.key_present(),
-                               "max_credits": pipeline.MAX_JOB_CREDITS, "session_credits": pipeline.LEDGER["credits"]})
+                               "max_credits": pipeline.MAX_JOB_CREDITS, "session_credits": pipeline.LEDGER["credits"],
+                               "example": bool(folder_images("assets/soraa"))})
         if path == "/api/jobs":
             jobs = sorted(pipeline.JOBS.values(), key=lambda j: j.get("created", 0), reverse=True)[:8]
             return self._json({"jobs": jobs})

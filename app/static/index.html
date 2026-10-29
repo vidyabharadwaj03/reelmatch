@@ -36,6 +36,8 @@
   @media (max-width: 760px) { .hero-grid { grid-template-columns: 1fr; } .collage { display: none; } }
   .hero h1 { font-size: clamp(34px, 4.2vw, 52px); line-height: 1.05; letter-spacing: -0.065em; font-weight: 800; } .hero h1 span { color: var(--lime); }
   .intro { max-width: 440px; margin: 16px 0 0; color: var(--on-plum); font-size: 15.5px; line-height: 1.7; }
+  .hero-btn { margin-top: 18px; background: transparent; color: var(--cream); border: 1px solid rgba(255, 244, 222, .35); padding: 9px 18px; font-size: 13px; }
+  .hero-btn:hover:not(:disabled) { border-color: var(--lime); color: var(--lime); }
   .collage { position: relative; height: 210px; }
   .pol { position: absolute; background: var(--cream); padding: 6px 6px 24px; box-shadow: 0 14px 36px rgba(16, 2, 12, .45); margin: 0; }
   .pol img, .pol .ph-empty { display: block; width: 100%; height: 100%; object-fit: cover; background: #6a2a36; }
@@ -105,6 +107,9 @@
   .ph:nth-child(odd) { --r: -2deg; } .ph:nth-child(even) { --r: 2deg; }
   .ph img { width: 62px; height: 82px; object-fit: cover; display: block; }
   .ph em { position: absolute; top: -8px; left: -8px; width: 20px; height: 20px; border-radius: 50%; background: var(--plum); color: var(--lime); font: 700 11px/20px var(--body); text-align: center; font-style: normal; }
+  .ph .x { position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; padding: 0; border-radius: 50%; background: var(--rose); color: #fff; border: 0; display: grid; place-items: center; box-shadow: none; }
+  .ph .x .ic { width: 11px; height: 11px; }
+  .photos .clr { align-self: center; padding: 7px 14px; font-size: 12.5px; }
   .mi { display: flex; align-items: center; gap: 10px; margin-top: 8px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; font-size: 13px; font-weight: 500; }
   .mi video { width: 42px; height: 58px; object-fit: cover; border-radius: 8px; background: #000; } .mi audio { height: 34px; max-width: 210px; } .mi span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
   .mi button { padding: 6px 8px; } .mi button .ic { width: 14px; height: 14px; }
@@ -212,6 +217,7 @@
       <div>
         <h1>Your photos.<br>Your brief.<br><span>Your ad.</span></h1>
         <p class="intro">Tell us about your campaign and add a few photos. Reelmatch picks the right video model for you and makes a vertical ad draft.</p>
+        <button class="hero-btn hidden" id="exampleBtn" type="button">Load the Soraa example</button>
       </div>
       <div class="collage" aria-hidden="true">
         <figure class="pol a"><div id="pol1" class="ph-empty"><svg class="ic" style="width:30px;height:30px"><use href="#i-camera"/></svg></div><figcaption>The cast.</figcaption></figure>
@@ -230,11 +236,11 @@
   <section class="card" id="s1">
     <div class="lv" id="lv1"><span class="n">1</span><h2>Your campaign</h2></div>
     <p class="sub">The basics. Everything else is optional.</p>
-    <label for="brand">Brand</label><input type="text" id="brand" value="Soraa">
+    <label for="brand">Brand</label><input type="text" id="brand" placeholder="Your brand name">
     <div class="lbl">What is the ad about?</div><div class="big" id="g-subject"></div>
     <label for="description" id="descLabel">Describe your brand or product</label>
-    <textarea id="description">A new way to find brand partnerships, like Hinge for creators and brands.</textarea>
-    <label for="message">On-screen line</label><input type="text" id="message" value="You'd stop scrolling for us.">
+    <textarea id="description" placeholder="A few words about what you sell, or what the ad is for."></textarea>
+    <label for="message">On-screen line</label><input type="text" id="message" placeholder="A short line to show on screen (optional)">
     <div class="lbl">Length</div><div class="chips" id="g-length"></div>
     <div class="lbl">Sound</div><div class="chips" id="g-audio"></div>
 
@@ -251,7 +257,7 @@
         <div><label for="s-cta">Call to action</label><select id="s-cta"></select></div>
         <div><label for="s-budget">Credit budget</label><select id="s-budget"></select></div>
       </div>
-      <label for="feel">What should viewers feel?</label><textarea id="feel">curious and a little bit in on the secret</textarea>
+      <label for="feel">What should viewers feel?</label><textarea id="feel" placeholder="e.g. curious, cozy, ready to buy"></textarea>
       <div class="row">
         <div><label for="include">Must include</label><textarea id="include" placeholder="Props, colors, a moment"></textarea></div>
         <div><label for="avoid">Avoid</label><textarea id="avoid" placeholder="Competitors, colors, text"></textarea></div>
@@ -269,7 +275,7 @@
       <input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple></label>
     <div class="photos" id="thumbs"></div>
     <details class="sm"><summary>Use a folder on this computer instead</summary>
-      <label for="folder">Folder path</label><input type="text" id="folder" value="assets/soraa"><div class="hint">Used only when no photos are dropped above.</div></details>
+      <label for="folder">Folder path</label><input type="text" id="folder" placeholder="/path/to/your/photos"><div class="hint">Used only when no photos are added above.</div></details>
 
     <details class="more"><summary>Add a video, music or your voice <span class="count hidden" id="extrasCount"></span></summary><div class="in">
       <div class="sect"><svg class="ic"><use href="#i-video"/></svg>Reference video <span class="opt">optional</span></div>
@@ -397,7 +403,7 @@ async function init() {
   ["subject", "goal", "platform", "length", "audio", "video_mode"].forEach((g) => chips("g-" + g, g));
   chips("g-style", "style", true); chips("g-camera", "camera", true);
   fillSelect("s-audience", "audience", "genz"); fillSelect("s-cta", "cta", "none"); fillSelect("s-setting", "setting", "street_night"); fillSelect("s-budget", "budget", "");
-  onSubject(); health(); refreshPhotos(); history();
+  onSubject(); health(); renderPhotos(); history();
   document.querySelectorAll("input[type=text], textarea, select, input[type=checkbox]").forEach((e) => e.addEventListener("input", changed));
 }
 
@@ -410,7 +416,7 @@ const brief = () => ({
   video_mode: videos.length ? state.video_mode : "reference",
 });
 const strip = (a) => a.map(({ name, data }) => ({ name, data }));
-const payload = () => ({ brief: brief(), folder: $("folder").value, uploads, videos: strip(videos), audios: strip(audios), voices: strip(voices), model_id: override });
+const payload = () => ({ brief: brief(), folder: $("folder").value, uploads: strip(uploads), videos: strip(videos), audios: strip(audios), voices: strip(voices), model_id: override });
 const post = async (url, body) => {
   const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({ error: "Unexpected response from the server." }));
@@ -422,6 +428,7 @@ const post = async (url, body) => {
 let qTimer = null;
 function changed() { clearTimeout(qTimer); qTimer = setTimeout(refreshQuote, 250); markSteps(); }
 async function refreshQuote() {
+  if (photoCount === 0 && !(videos.length && state.video_mode !== "reference")) { quote = null; $("dockModel").textContent = "Add photos to get started"; $("dockMeta").textContent = "Then Reelmatch picks the model for you."; return; }
   try {
     quote = await post("/api/quote", { brief: brief(), counts: { images: photoCount, videos: videos.length, audios: audios.length, voices: voices.length },
       video_seconds: videos[0] && videos[0].sec, model_id: override });
@@ -439,6 +446,11 @@ function markSteps() {
   const n = videos.length + audios.length + voices.length; $("extrasCount").textContent = n; $("extrasCount").classList.toggle("hidden", !n);
 }
 
+$("exampleBtn").onclick = () => {
+  $("brand").value = "Soraa"; $("description").value = "A new way to find brand partnerships, like Hinge for creators and brands.";
+  $("message").value = "You'd stop scrolling for us."; $("feel").value = "curious and a little bit in on the secret";
+  uploads = []; $("folder").value = "assets/soraa"; loadFolder();
+};
 async function health() {
   try {
     const h = await (await fetch("/api/health")).json(), b = $("modeBadge");
@@ -446,26 +458,42 @@ async function health() {
     else if (!h.key) { b.className = "pill warn"; b.innerHTML = "<i></i>No API key, add it to .env"; }
     else { b.className = "pill"; b.innerHTML = "<i></i>Live, spends credits"; }
     $("spendBadge").innerHTML = `${ic("coins")}${h.session_credits} spent, ${h.max_credits} max per job`;
+    $("exampleBtn").classList.toggle("hidden", !h.example);
   } catch (e) { $("modeBadge").className = "pill warn"; $("modeBadge").innerHTML = "<i></i>Server not reachable"; }
 }
 
-/* ---- photos ---- */
-const showPhotos = (imgs) => {
-  photoCount = imgs.length;
-  const html = imgs.map((p) => `<div class="ph"><em>${p.n}</em><img src="${p.url}" alt="Photo ${p.n}"></div>`).join("");
-  $("thumbs").innerHTML = html; $("strip").innerHTML = html || '<div class="hint" style="color:var(--on-plum)">Photos show up here.</div>';
-  $("inCap").textContent = imgs.length ? `Your ${imgs.length} photo${imgs.length === 1 ? "" : "s"}` : "Your photos";
-  [["pol1", 0], ["pol2", 1]].forEach(([id, i]) => { if (imgs[i]) $(id).outerHTML = `<img id="${id}" src="${imgs[i].url}" alt="">`; });
+/* ---- photos: the list you build is what gets used. A folder is only a fallback. ---- */
+let folderImgs = [];
+const photoList = () => (uploads.length ? uploads : folderImgs);
+function renderPhotos() {
+  const list = photoList(); photoCount = list.length;
+  const card = (p, i, rm) => `<div class="ph"><em>${i + 1}</em><img src="${p.url}" alt="Photo ${i + 1}">${rm ? `<button type="button" class="x" data-i="${i}" aria-label="Remove photo ${i + 1}">${ic("x")}</button>` : ""}</div>`;
+  $("thumbs").innerHTML = list.map((p, i) => card(p, i, uploads.length > 0)).join("") + (list.length ? '<button type="button" class="ghost clr" id="clearPhotos">Clear all</button>' : "");
+  $("strip").innerHTML = list.map((p, i) => card(p, i, false)).join("") || '<div class="hint" style="color:var(--on-plum)">Photos show up here.</div>';
+  $("inCap").textContent = list.length ? `Your ${list.length} photo${list.length === 1 ? "" : "s"}` : "Your photos";
+  const empty = (n) => ic("camera", `width:${n}px;height:${n}px`);
+  $("pol1").innerHTML = list[0] ? `<img src="${list[0].url}" alt="">` : empty(30); $("pol2").innerHTML = list[1] ? `<img src="${list[1].url}" alt="">` : empty(24);
+  $("thumbs").querySelectorAll(".x").forEach((b) => (b.onclick = () => { uploads.splice(+b.dataset.i, 1); renderPhotos(); }));
+  const c = $("clearPhotos"); if (c) c.onclick = () => { uploads = []; folderImgs = []; $("folder").value = ""; renderPhotos(); };
   changed();
-};
-const refreshPhotos = async () => { try { notice(""); showPhotos((await post("/api/photos", payload())).images); } catch (e) { notice(e.message); } };
+}
+async function loadFolder() {
+  const f = $("folder").value.trim();
+  if (!f) { folderImgs = []; return renderPhotos(); }
+  try { notice(""); folderImgs = (await post("/api/photos", { folder: f, uploads: [] })).images; if (!folderImgs.length) notice("No JPG, PNG or WebP photos found in that folder."); }
+  catch (e) { notice(e.message); }
+  renderPhotos();
+}
 const videoSeconds = (url) => new Promise((res) => { const v = document.createElement("video"); v.preload = "metadata"; v.onloadedmetadata = () => res(v.duration); v.onerror = () => res(0); v.src = url; });
 const readFile = (f) => new Promise((res) => {
   const fr = new FileReader();
   fr.onload = async () => { const url = URL.createObjectURL(f); res({ name: f.name, data: fr.result, url, mb: (f.size / 1048576).toFixed(1), sec: f.type.startsWith("video") ? await videoSeconds(url) : 0 }); };
   fr.readAsDataURL(f);
 });
-async function takePhotos(list) { uploads = (await Promise.all([...list].slice(0, 20).map(readFile))).map(({ name, data }) => ({ name, data })); refreshPhotos(); }
+async function takePhotos(list) {
+  const got = await Promise.all([...list].map(readFile)), have = new Set(uploads.map((u) => u.name + u.mb));
+  uploads = [...uploads, ...got.filter((g) => !have.has(g.name + g.mb))].slice(0, 20); renderPhotos();
+}
 const wireDrop = (inputId, dropId, fn) => {
   $(inputId).addEventListener("change", (e) => fn(e.target.files));
   const d = $(dropId);
@@ -473,7 +501,7 @@ const wireDrop = (inputId, dropId, fn) => {
   ["dragleave", "drop"].forEach((ev) => d.addEventListener(ev, (e) => { e.preventDefault(); d.classList.remove("over"); }));
   d.addEventListener("drop", (e) => fn(e.dataTransfer.files));
 };
-wireDrop("files", "drop", takePhotos); $("folder").addEventListener("change", refreshPhotos);
+wireDrop("files", "drop", takePhotos); $("folder").addEventListener("change", loadFolder);
 
 /* ---- video, music, voice ---- */
 function renderMedia() {
@@ -570,6 +598,7 @@ function fillConfirm() {
 }
 $("makeBtn").onclick = async () => {
   if (busy) return; notice("");
+  if (photoCount === 0 && !(videos.length && state.video_mode !== "reference")) { $("s2").scrollIntoView({ behavior: "smooth", block: "center" }); notice("Add at least one photo first."); return; }
   if (!$("consent").checked) { $("s2").scrollIntoView({ behavior: "smooth", block: "center" }); notice("Tick the rights box under your photos first."); return; }
   $("makeBtn").disabled = true;
   try {

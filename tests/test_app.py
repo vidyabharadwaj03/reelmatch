@@ -343,6 +343,21 @@ class LiveAdapterTests(unittest.TestCase):
         self.assertIn("Prompt was too long", friendly_error(err))
 
 
+class BlankStartTests(unittest.TestCase):
+    def test_no_photos_means_no_photos(self):
+        self.assertEqual(server.gather_images({"folder": "", "uploads": []}), [])
+        self.assertEqual(server.gather_images({}), [])
+
+    def test_added_photos_win_over_a_folder(self):
+        from app import pipeline
+        png = base64.b64encode(PNG).decode()
+        got = server.gather_images({"folder": "assets/soraa", "uploads": [{"name": "mine.png", "data": png}]})
+        self.assertEqual([p.name for p in got], ["mine.png"])
+
+    def test_a_missing_folder_is_just_empty(self):
+        self.assertEqual(server.folder_images("/definitely/not/a/real/folder"), [])
+
+
 class PlannerTests(unittest.TestCase):
     def test_one_shot_per_beat_and_end_card(self):
         plan = make_plan({"brand": "Soraa", "duration": 15, "message": "Stop scrolling."}, 5)
