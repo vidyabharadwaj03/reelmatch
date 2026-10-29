@@ -23,6 +23,21 @@ If you have a good thread, add it here.
 Seedance refused the same photos when called directly through the Router with a first frame, and Comfy's template route accepted them.
 Treat any single refusal as route-specific, not as a model-wide rule.
 
+### Same photo, same prompt, 5 seconds (live, Oct 28, 2026)
+
+One photo of two friends holding a sign, one prompt, one run each. A first look, not a benchmark.
+
+| Model | Render time | Billed | What it did |
+|---|---|---|---|
+| Grok Imagine 1.5 Lite | 37s | 48.3 | Followed the prompt best: friends leaned in and laughed, sign stayed readable |
+| Pruna P-Video 2 (draft) | 27s | 22.6 | Cheapest, but the sign was lost when the friends turned away |
+| FLUX 3 Max | 21s | 64.1 | Most faithful to the photo, gentle motion only |
+| HeyGen Video 1.0 (480p) | 86s | 30.2 | Sign shrank mid-clip and returned at the end |
+| Veo 3.1 Fast (4s) | 53s | 84.4 | Re-imagined the street and framing; sign readable |
+
+All five accepted the real-person photo and returned vertical video with sound. Billed credits matched Comfy's estimates within 1%.
+Only Seedance has been run on five photos and 15 seconds, so it is the only model inside that range.
+
 ## What Comfy says (comfy)
 
 - Seedance 2.0/2.5 reference-to-video templates take plain photos. A separate `real_human` route needs one liveness check per real-person portrait.

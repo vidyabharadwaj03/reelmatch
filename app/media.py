@@ -152,3 +152,11 @@ def concat_clips(first: Path, second: Path, out: Path, size_from: Path | None = 
           "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(out)],
          "Could not join the clips")
     return out
+
+
+def crop_vertical(src: Path, out: Path, max_width: int = 1080) -> Path:
+    """Center-crop a photo to 9:16. Most image-to-video models follow the first photo's shape, and ads should be vertical."""
+    _run([ffmpeg_exe(), "-hide_banner", "-loglevel", "error", "-y", "-i", str(src), "-vf",
+          f"crop=w='min(iw,ih*9/16)':h='min(ih,iw*16/9)',scale='min({max_width},iw)':-2", "-frames:v", "1", "-q:v", "2", str(out)],
+         f"Could not prepare {src.name}")
+    return out

@@ -10,6 +10,9 @@ from dataclasses import dataclass, field, replace
 
 SEEDANCE_DRAFT_CREDITS_PER_SECOND = 31.2  # ran: 249 credits for 8s, 467 for 15s (480p draft)
 WAN_5S_CREDITS = 105.5  # ran: billed for one 5s 720p clip
+# Credits per second of output. Seedance is billed. The rest are Comfy's estimator for our exact settings, assumed linear in length.
+PER_SECOND = {"seedance-2.5-draft": SEEDANCE_DRAFT_CREDITS_PER_SECOND, "grok-imagine-1.5-lite": 9.66, "pruna-p-video-2": 4.53,
+              "flux-3-max-i2v": 12.82, "kling-4-i2v": 47.4, "heygen-video-1-r2v": 6.03, "veo-3.1": 21.1}
 
 
 @dataclass(frozen=True)
@@ -32,13 +35,19 @@ class VideoModel:
     video_refs: int = 0  # reference videos it accepts
     audio_refs: int = 0  # reference audio clips it accepts
     video_modes: tuple = ()  # what it can do with a reference video: reference, extend, edit
+    tested_refs: int = 1  # most photos we have run it with
+    tested_s: int = 5  # longest clip we have run
+    taste: int = 0  # our judgement of output quality from our own runs, -5 to +15
 
     def cost(self, duration: int) -> int | None:
-        if self.id == "seedance-2.5-draft":
-            return round(duration * SEEDANCE_DRAFT_CREDITS_PER_SECOND)
         if self.id == "wan-2.7-i2v":
             return round(WAN_5S_CREDITS)
-        return None
+        rate = PER_SECOND.get(self.id)
+        if rate is None:
+            return None
+        if self.id == "veo-3.1":  # Veo renders 4, 6 or 8 second clips
+            duration = min((4, 6, 8), key=lambda s: abs(s - duration))
+        return round(duration * rate)
 
 
 COMFY_BLOG_H3 = "https://blog.comfy.org/p/minimax-h3-day-0-support-in-comfyui"
@@ -119,10 +128,33 @@ _MEDIA = {
     "seedance-2.5-draft": (3, 3, ("reference", "extend", "edit"),
                            ("comfy", "Reference-to-video takes images, video clips and audio clips; node task types are reference, edit and extend. Comfy's template says 6 clips each, other docs say 3, so we send at most 3", "")),
     "minimax-h3-r2v": (3, 3, ("reference",), ("comfy", "Template takes up to 3 videos and 3 audio clips alongside the images", "")),
-    "heygen-video-1-r2v": (3, 3, ("reference",), ("comfy", "Template takes up to 3 videos and 3 audio clips alongside the images", "")),
+    "heygen-video-1-r2v": (0, 0, ("reference",), ("comfy", "Node takes up to 3 videos and 3 audio clips; our adapter does not send them yet", "")),
 }
 MODELS = [replace(m, video_refs=_MEDIA[m.id][0], audio_refs=_MEDIA[m.id][1], video_modes=_MEDIA[m.id][2], evidence=m.evidence + (_MEDIA[m.id][3],))
           if m.id in _MEDIA else m for m in MODELS]
+# Results of our live runs: same photo, same prompt, 5s (Veo 4s). One run each, so treat as a first look, not a benchmark.
+_RAN = {
+    "grok-imagine-1.5-lite": dict(audio=True, taste=8, evidence=(("ran", "Followed the prompt best: the friends leaned in and laughed and the sign stayed readable. 37s to render, billed 48.3 credits", ""),)),
+    "pruna-p-video-2": dict(taste=-3, evidence=(("ran", "Cheapest at 22.6 credits and 27s, but the sign was lost when the friends turned away", ""),)),
+    "flux-3-max-i2v": dict(taste=3, evidence=(("ran", "Most faithful to the photo with only gentle motion. 21s to render, billed 64.1 credits", ""),)),
+    "veo-3.1": dict(taste=2, tested_s=4, evidence=(("ran", "Re-imagined the street and framing noticeably; sign stayed readable. 4s clip, 53s to render, billed 84.4 credits", ""),)),
+    "heygen-video-1-r2v": dict(taste=0, evidence=(("ran", "Capped at 480p here, 86s to render, billed 30.2 credits. The sign shrank mid-clip and returned at the end", ""),)),
+}
+
+# Wired in this build. Ranges and photo counts come from Comfy's node specs. Status stays "listed" until a live run succeeds.
+_WIRED = {
+    "grok-imagine-1.5-lite": dict(adapter="grok", min_s=1, max_s=15, max_refs=1, audio=False),
+    "pruna-p-video-2": dict(adapter="pruna", min_s=1, max_s=20, max_refs=2, audio=True),
+    "flux-3-max-i2v": dict(adapter="flux3", min_s=5, max_s=20, max_refs=10, audio=True),
+    "kling-4-i2v": dict(adapter="kling4", min_s=3, max_s=30, max_refs=10, audio=True),
+    "heygen-video-1-r2v": dict(adapter="heygen", min_s=5, max_s=15, max_refs=9, audio=True),
+    "veo-3.1": dict(adapter="veo", min_s=4, max_s=8, max_refs=1, audio=True),
+}
+MODELS = [replace(m, **_WIRED[m.id]) if m.id in _WIRED else m for m in MODELS]
+MODELS = [replace(m, status="verified", **{k: v for k, v in _RAN[m.id].items() if k != "evidence"}, evidence=_RAN[m.id]["evidence"] + m.evidence)
+          if m.id in _RAN else m for m in MODELS]
+# What the first two verified models were tested with.
+MODELS = [replace(m, tested_refs=5, tested_s=15, taste=15) if m.id == "seedance-2.5-draft" else m for m in MODELS]
 BY_ID = {m.id: m for m in MODELS}
 
 
@@ -139,6 +171,11 @@ def _checks(m: VideoModel, brief: dict, n_images: int) -> tuple[list[dict], bool
             eligible = False
 
     add(m.adapter is not None, "Adapter is wired up" if m.adapter else "No adapter written yet")
+    if m.status == "verified" and m.adapter:
+        if n_images > m.tested_refs:
+            add(False, f"Only tested with up to {m.tested_refs} photo{'s' if m.tested_refs != 1 else ''}, you gave {n_images}", hard=False)
+        if duration > m.tested_s:
+            add(False, f"Only tested up to {m.tested_s}s, you asked for {duration}s", hard=False)
     if brief.get("open_weights_only"):
         add(m.open_weights == "yes", "Open weights" if m.open_weights == "yes" else
             "Open-weights status unverified" if m.open_weights == "unverified" else "Partner API, not open weights")
@@ -206,21 +243,38 @@ def choose(brief: dict, n_images: int) -> dict:
             score += 20 if (m.max_refs is None or n_images <= m.max_refs) else 0
             score += 5 if (subject == "product" and m.product_fit) else 0
             score += 3 if (int(brief.get("n_audio", 0)) and m.audio_refs) else 0
+            score += m.taste
+            score -= 30 if (m.status == "verified" and n_images > m.tested_refs) else 0
+            score -= 15 if (m.status == "verified" and duration > m.tested_s) else 0
             score += 15 if (subject != "product" and m.people == "ok") else 0
             score -= (cost or 0) / 10  # cheaper wins among models that fit
         ranking.append({"id": m.id, "label": m.label, "status": m.status, "note": m.note, "eligible": eligible,
                         "score": round(score, 1), "cost": cost, "checks": checks, "product_fit": m.product_fit,
                         "price_note": m.price_note, "open_weights": m.open_weights,
                         "evidence": [{"kind": k, "text": t, "url": u} for k, t, u in m.evidence]})
-    ranking.sort(key=lambda r: (not r["eligible"], -r["score"]))
+    # Models we have actually run come first. An untested model is never picked automatically while a tested one fits.
+    # It can still be chosen by hand, and it joins the automatic pool once a live run has succeeded.
+    def tier(r):  # 0: tested and inside what we tested, 1: tested but outside it, 2: untested
+        m = BY_ID[r["id"]]
+        if m.status != "verified":
+            return 2
+        return 0 if (n_images <= m.tested_refs and duration <= m.tested_s) else 1
+
+    ranking.sort(key=lambda r: (not r["eligible"], tier(r), -r["score"]))
     best = ranking[0]
     if not best["eligible"]:
         return {"model": None, "label": None, "reasons": ["No model fits this brief."], "ranking": ranking, "cost": None,
                 "auto_model": None, "overridden": False}
     others = [r for r in ranking[1:] if r["eligible"]]
     reasons = [c["text"] for c in best["checks"] if c["ok"]]
-    if others:
+    if best["status"] != "verified":
+        reasons.append("No tested model fits, so this untested one was picked")
+    elif tier(best) == 1:
+        reasons.append("No model has been tested this far, so this is the closest tested one")
+    elif others and others[0]["status"] == "verified":
         reasons.append(f"Beat {others[0]['label']} on score ({best['score']} vs {others[0]['score']})")
+    elif others:
+        reasons.append("Models we have run are preferred over untested ones")
     return {"model": best["id"], "label": best["label"], "reasons": reasons, "ranking": ranking, "cost": best["cost"],
             "auto_model": best["id"], "overridden": False}
 

@@ -150,7 +150,32 @@ def _wan(job_id, prompt, images, duration, out_file, videos=(), audios=(), mode=
     Path(out_file).write_bytes(r.content)
 
 
-ADAPTERS = {"seedance": _seedance, "wan": _wan}
+def _partner(key):
+    """An adapter for one partner-node model: prepare vertical photos, upload, run the small graph, save the video."""
+    from . import adapters, media
+
+    label, build = adapters.BUILDERS[key]
+
+    def run(job_id, prompt, images, duration, out_file, videos=(), audios=(), mode="reference"):
+        from comfy_sdk import Comfy
+
+        _set(job_id, status="uploading", message=f"Preparing {min(len(images), 10)} photo(s)")
+        prepared = []
+        for i, img in enumerate(images):
+            prepared.append(media.crop_vertical(img, out_file.parent / f"v{i}.jpg"))
+        names = [upload_file(p) for p in prepared]
+        _set(job_id, status="rendering", message=f"Rendering on Comfy Cloud with {label}")
+        client = Comfy()
+        job = client.run(client.workflows.from_json(build(prompt, names, duration)), api_key=os.environ["COMFY_API_KEY"], timeout=JOB_TIMEOUT)
+        vids = [o for o in job.outputs if (o.content_type or "").startswith("video") or o.name.endswith(".mp4")]
+        if not vids:
+            raise RuntimeError("The job finished but returned no video")
+        vids[0].to_file(out_file)
+
+    return run
+
+
+ADAPTERS = {"seedance": _seedance, "wan": _wan, **{k: _partner(k) for k in ("grok", "pruna", "flux3", "kling4", "heygen", "veo")}}
 
 
 def _set(job_id, **kw):
