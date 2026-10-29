@@ -77,6 +77,8 @@ def make_plan(brief: dict, n_images: int) -> str:
         lines.append(f"Made for {phrase('audience', brief['audience'])}.")
     if brief.get("feel"):
         lines.append(f"Viewers should feel: {brief['feel'].strip().rstrip('.')}.")
+    for i, who in enumerate(brief.get("people_names", []), start=1):
+        lines.append(f"Use @asset_{i} as the reference character for {who}. Keep their face and look exactly as in the reference.")
     for i, beat in enumerate(beats):
         stop = "" if beat.endswith(".") else "."
         ref = f" Draw on reference photo {i % n_images + 1}." if n_images else ""

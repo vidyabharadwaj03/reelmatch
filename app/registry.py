@@ -13,7 +13,8 @@ WAN_5S_CREDITS = 105.5  # ran: billed for one 5s 720p clip
 # Credits per second of output. Seedance is billed. The rest are Comfy's estimator for our exact settings, assumed linear in length.
 PER_SECOND = {"seedance-2.5-draft": SEEDANCE_DRAFT_CREDITS_PER_SECOND, "grok-imagine-1.5-lite": 9.66, "pruna-p-video-2": 4.53,
               "flux-3-max-i2v": 12.82, "kling-4-i2v": 47.4, "heygen-video-1-r2v": 6.03, "veo-3.1": 21.1,
-              "ltx-2.5-i2v": 1.0, "minimax-h3-r2v": 2.0}  # LTX runs on Comfy GPUs: 18 GPU-seconds for 5s, credits not itemized, so this is a rough estimate
+              "ltx-2.5-i2v": 1.0, "minimax-h3-r2v": 2.0,
+              "seedance-2.0-real-human": SEEDANCE_DRAFT_CREDITS_PER_SECOND}  # assumed same price as the normal Seedance draft until run  # LTX runs on Comfy GPUs: 18 GPU-seconds for 5s, credits not itemized, so this is a rough estimate
 
 
 @dataclass(frozen=True)
@@ -118,8 +119,8 @@ MODELS = [
                product_fit="",
                price_note="About 45 credits for the template default (Comfy estimator).",
                evidence=(("comfy", "Template description and estimator", ""),)),
-    VideoModel("seedance-2.0-real-human", "Seedance 2.0 real-human (KYC)", None, "listed", 4, 15, None, True, True,
-               "ok", "no", "A selfie becomes a verified ByteDance asset, then is referenced as @asset_1.",
+    VideoModel("seedance-2.0-real-human", "Seedance with a verified person", None, "listed", 4, 15, None, True, True,
+               "ok", "no", "A person verifies once with ByteDance (a short liveness check on their phone), then can appear in any ad as @asset_1.",
                price_note="About 352 credits for a 5s run (Comfy estimator).",
                evidence=(("comfy", "Needs one liveness verification per real-person portrait", SEEDANCE_DOCS),)),
 ]
@@ -153,6 +154,7 @@ _WIRED = {
     "heygen-video-1-r2v": dict(adapter="heygen", min_s=5, max_s=15, max_refs=9, audio=True),
     "veo-3.1": dict(adapter="veo", min_s=4, max_s=8, max_refs=1, audio=True),
     "ltx-2.5-i2v": dict(adapter="ltx25", min_s=2, max_s=20, max_refs=1, audio=True, open_weights="yes"),
+    "seedance-2.0-real-human": dict(adapter="seedance", min_s=4, max_s=30, max_refs=20),
     "minimax-h3-r2v": dict(adapter="h3", min_s=2, max_s=15, max_refs=9, audio=True, open_weights="yes"),
 }
 MODELS = [replace(m, **_WIRED[m.id]) if m.id in _WIRED else m for m in MODELS]
@@ -227,6 +229,8 @@ def _checks(m: VideoModel, brief: dict, n_images: int) -> tuple[list[dict], bool
             add(False, "Not tested with real-person photos", hard=False)
     if brief.get("verified_likeness"):
         add(m.kyc, "Has an identity-verified likeness route" if m.kyc else "No identity-verified likeness route")
+    elif m.kyc:
+        add(False, "Needs a verified person to be selected")
     budget = brief.get("budget")
     cost = m.cost(duration)
     if budget and cost is not None:

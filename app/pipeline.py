@@ -84,7 +84,7 @@ def upload_file(path: Path) -> str:
     return f"{body['subfolder']}/{body['name']}" if body.get("subfolder") else body["name"]
 
 
-def build_seedance_graph(prompt: str, image_names: list[str], duration: int, video_names=(), audio_names=(), task_type=None) -> dict:
+def build_seedance_graph(prompt: str, image_names: list[str], duration: int, video_names=(), audio_names=(), task_type=None, assets=()) -> dict:
     """Seedance 2.5 draft reference-to-video. Same graph as the Comfy template that worked."""
     graph = {}
     node = {
@@ -105,6 +105,8 @@ def build_seedance_graph(prompt: str, image_names: list[str], duration: int, vid
     for i, name in enumerate(audio_names, start=1):
         graph[str(820 + i)] = {"_meta": {"title": f"Reference audio {i}"}, "class_type": "LoadAudio", "inputs": {"audio": name}}
         node[f"model.reference_audios.audio_{i}"] = [str(820 + i), 0]
+    for i, asset in enumerate(assets, start=1):  # verified people: ByteDance asset ids, referred to as @asset_N in the prompt
+        node[f"model.reference_assets.asset_{i}"] = asset
     graph["789"] = {"_meta": {"title": "Seedance 2.5 draft"}, "class_type": "ByteDance2ReferenceNodeV2", "inputs": node}
     graph["776"] = {"_meta": {"title": "Save video"}, "class_type": "SaveVideo", "inputs": {
         "codec": "auto", "filename_prefix": "video/reelmatch", "format": "auto", "format.codec": "auto", "video": ["789", 0]}}
@@ -113,7 +115,7 @@ def build_seedance_graph(prompt: str, image_names: list[str], duration: int, vid
     return graph
 
 
-def _seedance(job_id, prompt, images, duration, out_file, videos=(), audios=(), mode="reference"):
+def _seedance(job_id, prompt, images, duration, out_file, videos=(), audios=(), mode="reference", assets=()):
     from comfy_sdk import Comfy
 
     base = "extend" if mode.startswith("extend") else mode
@@ -127,7 +129,7 @@ def _seedance(job_id, prompt, images, duration, out_file, videos=(), audios=(), 
     _set(job_id, status="rendering", message="Rendering on Comfy Cloud with Seedance 2.5 (about a minute)")
     client = Comfy()
     # Partner-model steps (Seedance) need the key sent with the job, or Comfy answers "Unauthorized: Please login first".
-    graph = build_seedance_graph(prompt, names, duration, video_names, audio_names, None if base == "reference" else base)
+    graph = build_seedance_graph(prompt, names, duration, video_names, audio_names, None if base == "reference" else base, assets)
     job = client.run(client.workflows.from_json(graph), api_key=os.environ["COMFY_API_KEY"], timeout=JOB_TIMEOUT)
     videos = [o for o in job.outputs if (o.content_type or "").startswith("video") or o.name.endswith(".mp4")]
     if not videos:
@@ -135,7 +137,7 @@ def _seedance(job_id, prompt, images, duration, out_file, videos=(), audios=(), 
     videos[0].to_file(out_file)
 
 
-def _wan(job_id, prompt, images, duration, out_file, videos=(), audios=(), mode="reference"):
+def _wan(job_id, prompt, images, duration, out_file, videos=(), audios=(), mode="reference", assets=()):
     from comfy_sdk import Comfy
 
     _set(job_id, status="rendering", message="Rendering on Comfy Cloud with Wan 2.7 (about 30 seconds)")
@@ -156,7 +158,7 @@ def _partner(key):
 
     label, build = adapters.BUILDERS[key]
 
-    def run(job_id, prompt, images, duration, out_file, videos=(), audios=(), mode="reference"):
+    def run(job_id, prompt, images, duration, out_file, videos=(), audios=(), mode="reference", assets=()):
         from comfy_sdk import Comfy
 
         _set(job_id, status="uploading", message=f"Preparing {min(len(images), 10)} photo(s)")
@@ -200,7 +202,7 @@ def mock_video_path() -> Path:
     return sample
 
 
-def _run(job_id: str, model, prompt: str, images: list[Path], duration: int, videos=(), audios=(), soundtrack=None, voice=None, mode="reference"):
+def _run(job_id: str, model, prompt: str, images: list[Path], duration: int, videos=(), audios=(), soundtrack=None, voice=None, mode="reference", assets=()):
     from . import media
 
     out = OUTPUTS / job_id / "video.mp4"
@@ -213,7 +215,7 @@ def _run(job_id: str, model, prompt: str, images: list[Path], duration: int, vid
             load_env()
             if not os.environ.get("COMFY_API_KEY"):
                 raise RuntimeError("No Comfy API key found. Add COMFY_API_KEY to .env.")
-            ADAPTERS[model.adapter](job_id, prompt, images, duration, out, videos, audios, mode)
+            ADAPTERS[model.adapter](job_id, prompt, images, duration, out, videos, audios, mode, assets)
         if mode.startswith("extend") and videos:
             _set(job_id, status="rendering", message="Joining your clip and the new footage")
             joined = out.with_name("video_joined.mp4")
@@ -236,15 +238,15 @@ def _run(job_id: str, model, prompt: str, images: list[Path], duration: int, vid
         _set(job_id, status="error", message=friendly_error(e))
 
 
-def start_job(model, prompt: str, images: list[Path], duration: int, videos=(), audios=(), soundtrack=None, voice=None, mode="reference") -> str:
+def start_job(model, prompt: str, images: list[Path], duration: int, videos=(), audios=(), soundtrack=None, voice=None, mode="reference", assets=()) -> str:
     job_id = uuid.uuid4().hex[:10]
     with _lock:
         JOBS[job_id] = {"id": job_id, "status": "queued", "message": "Queued", "video": None, "model": model.label,
                         "duration": duration, "photos": len(images), "videos": len(videos), "music": bool(soundtrack),
-                        "voice": bool(voice), "mode": mode, "credits": model.cost(duration), "mock": MOCK,
+                        "voice": bool(voice), "mode": mode, "people": len(assets), "credits": model.cost(duration), "mock": MOCK,
                         "created": int(time.time())}
     _set(job_id)
-    threading.Thread(target=_run, args=(job_id, model, prompt, images, duration, videos, audios, soundtrack, voice, mode), daemon=True).start()
+    threading.Thread(target=_run, args=(job_id, model, prompt, images, duration, videos, audios, soundtrack, voice, mode, assets), daemon=True).start()
     return job_id
 
 

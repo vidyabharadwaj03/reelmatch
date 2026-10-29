@@ -35,15 +35,22 @@ class ChooserTests(unittest.TestCase):
     def test_long_video_only_seedance_fits(self):
         self.assertEqual(choose({"duration": 25}, 3)["model"], "seedance-2.5-draft")
 
-    def test_verified_likeness_has_no_wired_model(self):
+    def test_verified_likeness_routes_to_the_verified_person_model(self):
         r = choose({"duration": 15, "verified_likeness": True}, 2)
-        self.assertIsNone(r["model"])
+        self.assertEqual(r["model"], "seedance-2.0-real-human")
+        plain = next(x for x in r["ranking"] if x["id"] == "seedance-2.5-draft")
+        self.assertFalse(plain["eligible"])
 
+    def test_the_verified_person_model_is_never_used_without_a_verified_person(self):
+        r = choose({"duration": 15}, 5)
+        kyc = next(x for x in r["ranking"] if x["id"] == "seedance-2.0-real-human")
+        self.assertFalse(kyc["eligible"])
+        self.assertTrue(any("verified person" in c["text"] for c in kyc["checks"]))
     def test_budget_too_small_means_no_model(self):
         self.assertIsNone(choose({"duration": 5, "budget": 2}, 1)["model"])
     def test_models_without_an_adapter_are_never_eligible(self):
         for r in choose({"duration": 15}, 5)["ranking"]:
-            if r["id"] == "seedance-2.0-real-human":
+            if not r["checks"][0]["ok"]:  # first check is "adapter wired up"
                 self.assertFalse(r["eligible"], r["id"])
     def test_untested_models_are_never_picked_while_a_tested_one_fits(self):
         # Regression: cheap untested models (HeyGen, Pruna) used to outrank Seedance on price alone.
@@ -205,6 +212,88 @@ class PickTests(unittest.TestCase):
         for m in __import__("app.registry", fromlist=["MODELS"]).MODELS:
             if m.adapter in ("grok", "pruna", "flux3", "kling4", "heygen", "veo", "ltx25", "h3", "wan"):
                 self.assertEqual((m.video_refs, m.audio_refs), (0, 0), m.id)
+
+
+class LikenessTests(unittest.TestCase):
+    def setUp(self):
+        from app import likeness
+        self._tmp = tempfile.TemporaryDirectory()
+        self.likeness = likeness
+        self._patch = mock.patch.object(likeness, "STORE", Path(self._tmp.name) / "likeness.json")
+        self._patch.start()
+        likeness._save_people([{"id": "p1", "name": "Vidya", "group_id": "SECRET-GROUP", "asset_ids": ["SECRET-ASSET"], "created": 1},
+                               {"id": "p2", "name": "Sam", "group_id": "g2", "asset_ids": ["a2"], "created": 2}])
+
+    def tearDown(self):
+        self._patch.stop()
+        self._tmp.cleanup()
+
+    def test_the_page_never_sees_the_verification_ids(self):
+        shown = str(self.likeness.public_people())
+        self.assertIn("Vidya", shown)
+        self.assertNotIn("SECRET", shown)
+
+    def test_selected_people_resolve_in_order_and_unknown_ids_are_dropped(self):
+        self.assertEqual([p["name"] for p in self.likeness.resolve(["p2", "nope", "p1"])], ["Sam", "Vidya"])
+
+    def test_deleting_a_person_removes_them(self):
+        self.assertTrue(self.likeness.delete_person("p1"))
+        self.assertEqual([p["id"] for p in self.likeness.public_people()], ["p2"])
+        self.assertFalse(self.likeness.delete_person("p1"))
+
+    def test_the_store_is_readable_only_by_the_owner(self):
+        self.assertEqual(oct(self.likeness.STORE.stat().st_mode & 0o777), "0o600")
+
+    def test_the_verification_link_is_found_but_download_links_are_not_mistaken_for_it(self):
+        f = self.likeness.find_link
+        self.assertEqual(f("Open https://verify.example.com/h5?token=abc to continue."), "https://verify.example.com/h5?token=abc")
+        self.assertIsNone(f("saved to https://storage.googleapis.com/comfy-cloud-assets/x.mp4?sig=1"))
+        self.assertIsNone(f("no link here"))
+
+    def test_the_verification_graph_runs_the_liveness_flow_with_an_empty_group(self):
+        g = self.likeness.verification_graph("me.jpg")
+        self.assertEqual(g["2"]["class_type"], "ByteDanceCreateImageAsset")
+        self.assertEqual(g["2"]["inputs"]["group_id"], "")
+        self.assertEqual((g["3"]["inputs"]["text"], g["4"]["inputs"]["text"]), (["2", 0], ["2", 1]))
+
+    def test_selecting_a_person_sets_the_flag_names_and_asset_ids(self):
+        brief = server.clean_brief({"duration": 8, "people": ["p1", "bogus"]})
+        assets = server.apply_people(brief)
+        self.assertEqual(assets, ["SECRET-ASSET"])
+        self.assertEqual(brief["people_names"], ["Vidya"])
+        self.assertTrue(brief["verified_likeness"])
+        self.assertEqual(choose(brief, 0)["model"], "seedance-2.0-real-human")
+
+    def test_product_ads_ignore_selected_people(self):
+        brief = server.clean_brief({"duration": 8, "subject": "product", "people": ["p1"]})
+        self.assertEqual(brief["people"], [])
+        self.assertEqual(server.apply_people(brief), [])
+        self.assertFalse(brief["verified_likeness"])
+
+    def test_the_plan_refers_to_each_person_by_asset_number(self):
+        from app.planner import make_plan
+        plan = make_plan({"duration": 8, "people_names": ["Vidya", "Sam"]}, 1)
+        self.assertIn("@asset_1", plan)
+        self.assertIn("Vidya", plan)
+        self.assertIn("@asset_2", plan)
+
+    def test_the_seedance_graph_carries_asset_ids_as_plain_strings(self):
+        from app.pipeline import build_seedance_graph
+        n = build_seedance_graph("p", [], 5, assets=["A1", "A2"])["789"]["inputs"]
+        self.assertEqual((n["model.reference_assets.asset_1"], n["model.reference_assets.asset_2"]), ("A1", "A2"))
+        self.assertFalse([k for k in n if "reference_images" in k])
+
+    def test_starting_a_check_needs_consent_a_name_and_live_mode(self):
+        h = server.Handler
+        with mock.patch.object(server.pipeline, "MOCK", False), mock.patch.object(server.pipeline, "key_present", return_value=True):
+            with self.assertRaises(server.BadRequest):
+                h._likeness_start(None, {"name": "", "consent": True})
+            with self.assertRaises(server.BadRequest):
+                h._likeness_start(None, {"name": "Vidya", "consent": False})
+        with mock.patch.object(server.pipeline, "MOCK", True):
+            with self.assertRaises(server.BadRequest) as cm:
+                h._likeness_start(None, {"name": "Vidya", "consent": True})
+            self.assertIn("live mode", str(cm.exception))
 
 
 class TestedRangeTests(unittest.TestCase):

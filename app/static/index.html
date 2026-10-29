@@ -263,7 +263,6 @@
         <div><label for="avoid">Avoid</label><textarea id="avoid" placeholder="Competitors, colors, text"></textarea></div>
       </div>
       <label class="check"><input type="checkbox" id="ow"><span>Open-weights models only. <span class="hint">None is wired up yet, so this will say no model fits.</span></span></label>
-      <label class="check" id="kycRow"><input type="checkbox" id="kyc"><span>Use a verified likeness (identity check) for people. <span class="hint">Not wired up yet, so this will say no model fits.</span></span></label>
     </div></details>
   </section>
 
@@ -306,6 +305,12 @@
       </div>
       <div id="voiceList"></div>
       <div class="hint">Your voice plays over the ad. With music, the music dips while you talk.</div>
+    </div></details>
+
+    <details class="more" id="peopleBox"><summary>Put a verified person in your ad <span class="count hidden" id="peopleCount"></span></summary><div class="in">
+      <p class="hint" style="margin:4px 0 10px">A person who has done a one-time identity check can appear in your ad as themselves, and never has to check again. It runs on Seedance.</p>
+      <div id="peopleList"></div>
+      <div class="actions" style="margin-top:10px"><button class="ghost" id="verifyBtn" type="button"><svg class="ic"><use href="#i-users"/></svg>Verify a person</button></div>
     </div></details>
 
     <label class="check"><input type="checkbox" id="consent"><span id="consentText"></span></label>
@@ -356,6 +361,34 @@
     <div class="actions"><button class="lime" id="goBtn" type="button"><svg class="ic"><use href="#i-film"/></svg>Make it</button><button class="ghost" data-close type="button">Not yet</button></div>
   </div>
 </dialog>
+<dialog id="verifyDlg" aria-labelledby="verifyTitle">
+  <div class="dh"><h3 id="verifyTitle">Verify a person</h3><button class="ghost" type="button" data-close aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button></div>
+  <div class="db">
+    <div id="verifyForm">
+      <p class="sub">A one-time identity check, run by ByteDance through Comfy. Once verified, a person can appear in any ad without checking again.</p>
+      <label for="vName">Name</label><input type="text" id="vName" placeholder="Their name">
+      <label for="vSelfie">A clear photo of their face</label>
+      <label class="drop sm" for="vSelfie"><svg class="ic"><use href="#i-camera"/></svg><b>Choose a photo</b><br><span class="hint">Front-facing, one person, good light.</span>
+        <input id="vSelfie" type="file" accept="image/jpeg,image/png,image/webp"></label>
+      <div id="vPreview" class="photos"></div>
+      <div class="lbl">What happens</div>
+      <ul class="tips">
+        <li>The photo is sent to Comfy, and from there to ByteDance for the check.</li>
+        <li>You get a link. Open it on your phone and do a short liveness check (about 30 seconds). Reelmatch never sees that video.</li>
+        <li>The two ids that come back are saved on this computer only, so you can reuse them.</li>
+      </ul>
+      <label class="check"><input type="checkbox" id="vConsent"><span>This is my own face, or the person is with me and agrees to this check and to appearing in ads. I understand the photo is sent to Comfy and ByteDance.</span></label>
+      <div class="actions"><button class="lime" id="vStart" type="button">Start verification <svg class="ic"><use href="#i-arrowup"/></svg></button></div>
+    </div>
+    <div id="verifyProgress" class="hidden">
+      <p class="sub" id="vMsg">Starting</p>
+      <div id="vLinkBox" class="pick hidden"><div><b>Open this on your phone</b><a id="vLink" href="#" target="_blank" rel="noopener noreferrer" style="word-break:break-all"></a></div><button class="ghost" id="vCopy" type="button">Copy link</button></div>
+      <div class="prog" style="max-width:none;background:var(--line)"><span style="background:var(--plum)"></span></div>
+      <p class="hint" id="vHelp"></p>
+      <div class="actions"><button class="ghost" id="vCancel" type="button">Close</button></div>
+    </div>
+  </div>
+</dialog>
 <canvas id="fx" aria-hidden="true"></canvas>
 
 <script>
@@ -363,7 +396,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const ic = (n, s) => `<svg class="ic"${s ? ` style="${s}"` : ""} aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-let OPTS = {}, uploads = [], videos = [], audios = [], voices = [], photoCount = 0, quote = null, override = null, busy = false;
+let selectedPeople = new Set(), OPTS = {}, uploads = [], videos = [], audios = [], voices = [], photoCount = 0, quote = null, override = null, busy = false;
 const state = { subject: "people", goal: "awareness", platform: "TikTok", length: "15", audio: "music", style: ["ugc", "playful"], camera: ["handheld", "quick_cuts"], video_mode: "reference" };
 const subjectInfo = { product: ["package", "Product", "perfume, oil, gadget"], people: ["users", "People", "creators, founders"], both: ["layers", "Both", "someone using it"] };
 
@@ -392,7 +425,8 @@ function chips(id, group, multi) {
 const fillSelect = (id, group, def) => { $(id).innerHTML = OPTS[group].map((o) => `<option value="${esc(o.value)}"${String(o.value) === def ? " selected" : ""}>${esc(o.label)}</option>`).join(""); };
 function onSubject() {
   const s = state.subject, m = state.video_mode;
-  $("kycRow").classList.toggle("hidden", s === "product"); if (s === "product") $("kyc").checked = false;
+  $("peopleBox").classList.toggle("hidden", s === "product");
+  if (s === "product") { selectedPeople.clear(); $("peopleList").querySelectorAll("input[data-id]").forEach((c) => (c.checked = false)); }
   $("consentText").textContent = s === "product" ? "I own or have the rights to these product photos, brand assets and anything else I add."
     : "These are my own photos, or everyone shown has agreed to their use in an ad. I have the rights to anything else I add.";
   $("descLabel").textContent = m === "edit" ? "What should change?" : m.startsWith("extend") ? "What happens next?"
@@ -403,7 +437,7 @@ async function init() {
   ["subject", "goal", "platform", "length", "audio", "video_mode"].forEach((g) => chips("g-" + g, g));
   chips("g-style", "style", true); chips("g-camera", "camera", true);
   fillSelect("s-audience", "audience", "genz"); fillSelect("s-cta", "cta", "none"); fillSelect("s-setting", "setting", "street_night"); fillSelect("s-budget", "budget", "");
-  onSubject(); health(); renderPhotos(); history();
+  onSubject(); health(); renderPhotos(); history(); loadPeople();
   document.querySelectorAll("input[type=text], textarea, select, input[type=checkbox]").forEach((e) => e.addEventListener("input", changed));
 }
 
@@ -412,7 +446,7 @@ const brief = () => ({
   style: state.style, camera: state.camera, setting: $("s-setting").value, audience: $("s-audience").value, cta: $("s-cta").value,
   description: $("description").value, feel: $("feel").value, message: $("message").value, include: $("include").value, avoid: $("avoid").value,
   needs_audio: state.audio === "music", budget: $("s-budget").value, open_weights_only: $("ow").checked,
-  consent: $("consent").checked, verified_likeness: $("kyc").checked, soundtrack: $("soundtrack").checked,
+  consent: $("consent").checked, people: [...selectedPeople], soundtrack: $("soundtrack").checked,
   video_mode: videos.length ? state.video_mode : "reference",
 });
 const strip = (a) => a.map(({ name, data }) => ({ name, data }));
@@ -428,7 +462,7 @@ const post = async (url, body) => {
 let qTimer = null;
 function changed() { clearTimeout(qTimer); qTimer = setTimeout(refreshQuote, 250); markSteps(); }
 async function refreshQuote() {
-  if (photoCount === 0 && !(videos.length && state.video_mode !== "reference")) { quote = null; $("dockModel").textContent = "Add photos to get started"; $("dockMeta").textContent = "Then Reelmatch picks the model for you."; return; }
+  if (photoCount === 0 && !selectedPeople.size && !(videos.length && state.video_mode !== "reference")) { quote = null; $("dockModel").textContent = "Add photos to get started"; $("dockMeta").textContent = "Then Reelmatch picks the model for you."; return; }
   try {
     quote = await post("/api/quote", { brief: brief(), counts: { images: photoCount, videos: videos.length, audios: audios.length, voices: voices.length },
       video_seconds: videos[0] && videos[0].sec, model_id: override });
@@ -444,6 +478,7 @@ function markSteps() {
   $("lv2").classList.toggle("done", photoCount > 0 && $("consent").checked);
   for (const [id, n] of [["lv1", 1], ["lv2", 2]]) $(id).querySelector(".n").innerHTML = $(id).classList.contains("done") ? ic("check", "width:14px;height:14px") : n;
   const n = videos.length + audios.length + voices.length; $("extrasCount").textContent = n; $("extrasCount").classList.toggle("hidden", !n);
+  $("peopleCount").textContent = selectedPeople.size; $("peopleCount").classList.toggle("hidden", !selectedPeople.size);
 }
 
 $("exampleBtn").onclick = () => {
@@ -590,6 +625,51 @@ function openModels() {
 }
 $("whyBtn").onclick = openModels;
 
+/* ---- verified people ---- */
+async function loadPeople(selectId) {
+  const { people } = await (await fetch("/api/likeness")).json();
+  if (selectId) selectedPeople.add(selectId);
+  [...selectedPeople].forEach((id) => { if (!people.some((p) => p.id === id)) selectedPeople.delete(id); });
+  $("peopleList").innerHTML = people.length ? people.map((p) => `<div class="mi"><label class="check" style="margin:0;flex:1"><input type="checkbox" data-id="${esc(p.id)}" ${selectedPeople.has(p.id) ? "checked" : ""}><span><b>${esc(p.name)}</b> <span class="hint">verified</span></span></label>
+      <button type="button" class="ghost" data-del="${esc(p.id)}" aria-label="Remove ${esc(p.name)}">${ic("x")}</button></div>`).join("") : '<div class="hint">No one is verified yet.</div>';
+  $("peopleList").querySelectorAll("input[data-id]").forEach((c) => (c.onchange = () => { c.checked ? selectedPeople.add(c.dataset.id) : selectedPeople.delete(c.dataset.id); changed(); }));
+  $("peopleList").querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => {
+    await post("/api/likeness/delete", { id: b.dataset.del }); selectedPeople.delete(b.dataset.del); await loadPeople(); changed();
+  }));
+  changed();
+}
+let vFile = null, vPoll = null;
+$("verifyBtn").onclick = () => { $("verifyForm").classList.remove("hidden"); $("verifyProgress").classList.add("hidden"); $("verifyDlg").showModal(); };
+$("vSelfie").addEventListener("change", async (e) => {
+  vFile = e.target.files[0] ? await readFile(e.target.files[0]) : null;
+  $("vPreview").innerHTML = vFile ? `<div class="ph"><img src="${vFile.url}" alt="Photo to verify"></div>` : "";
+});
+$("vCancel").onclick = () => { clearTimeout(vPoll); $("verifyDlg").close(); };
+$("vCopy").onclick = () => { navigator.clipboard.writeText($("vLink").href).then(() => { $("vCopy").textContent = "Copied"; setTimeout(() => ($("vCopy").textContent = "Copy link"), 1500); }); };
+$("vStart").onclick = async () => {
+  const name = $("vName").value.trim();
+  if (!name) { notice("Enter the person's name."); return; }
+  if (!vFile) { notice("Choose a clear photo of their face."); return; }
+  if (!$("vConsent").checked) { notice("Please confirm the consent box first."); return; }
+  $("vStart").disabled = true;
+  try {
+    const { session } = await post("/api/likeness/start", { name, consent: true, selfie: { name: vFile.name, data: vFile.data } });
+    $("verifyForm").classList.add("hidden"); $("verifyProgress").classList.remove("hidden"); $("vLinkBox").classList.add("hidden");
+    $("vMsg").textContent = "Starting"; $("vHelp").textContent = "";
+    const t0 = Date.now();
+    const poll = async () => {
+      const st = await (await fetch("/api/likeness/session/" + session)).json();
+      $("vMsg").textContent = st.message;
+      if (st.url) { $("vLinkBox").classList.remove("hidden"); $("vLink").href = st.url; $("vLink").textContent = st.url; $("vHelp").textContent = "Do the liveness check on your phone. This page updates by itself when it is done."; }
+      else if (Date.now() - t0 > 45000) $("vHelp").textContent = "No link yet. If it does not appear, open cloud.comfy.org: the verification step of this job shows its link there.";
+      if (st.status === "done") { $("verifyDlg").close(); await loadPeople(st.person); notice(""); }
+      else if (st.status === "error") { $("vHelp").textContent = ""; $("verifyForm").classList.remove("hidden"); $("verifyProgress").classList.add("hidden"); notice(st.message); }
+      else vPoll = setTimeout(poll, 2000);
+    };
+    poll();
+  } catch (e) { notice(e.message); } finally { $("vStart").disabled = false; }
+};
+
 /* ---- make it ---- */
 function fillConfirm() {
   const m = quote.model;
@@ -598,12 +678,12 @@ function fillConfirm() {
 }
 $("makeBtn").onclick = async () => {
   if (busy) return; notice("");
-  if (photoCount === 0 && !(videos.length && state.video_mode !== "reference")) { $("s2").scrollIntoView({ behavior: "smooth", block: "center" }); notice("Add at least one photo first."); return; }
+  if (photoCount === 0 && !selectedPeople.size && !(videos.length && state.video_mode !== "reference")) { $("s2").scrollIntoView({ behavior: "smooth", block: "center" }); notice("Add at least one photo first."); return; }
   if (!$("consent").checked) { $("s2").scrollIntoView({ behavior: "smooth", block: "center" }); notice("Tick the rights box under your photos first."); return; }
   $("makeBtn").disabled = true;
   try {
     const r = await post("/api/plan", payload());
-    if (!r.n_images && !(videos.length && state.video_mode !== "reference")) { notice("Add at least one photo first."); return; }
+    if (!r.n_images && !selectedPeople.size && !(videos.length && state.video_mode !== "reference")) { notice("Add at least one photo first."); return; }
     quote = { model: r.model, credits: r.credits, duration: r.brief.duration };
     if (!r.model.model) { openModels(); return; }
     $("plan").value = r.plan; fillConfirm();

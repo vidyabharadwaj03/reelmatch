@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import pipeline
-from . import media, options
+from . import likeness, media, options
 from .planner import make_plan
 from .script import make_scripts
 from .registry import BY_ID, apply_override, choose
@@ -139,8 +139,18 @@ def clean_brief(raw: dict) -> dict:
         "needs_audio": bool(raw.get("needs_audio", True)), "budget": budget,
         "open_weights_only": bool(raw.get("open_weights_only")), "soundtrack": bool(raw.get("soundtrack", True)),
         "video_mode": one("video_mode", "reference"),
-        "consent": bool(raw.get("consent")), "verified_likeness": bool(raw.get("verified_likeness")) and subject != "product",
+        "consent": bool(raw.get("consent")), "people": ([str(i) for i in raw.get("people", [])][:4] if isinstance(raw.get("people"), list) and subject != "product" else []),
+        "verified_likeness": False,
     }
+
+
+def apply_people(brief: dict) -> list[str]:
+    """Turn selected person ids into names (for the prompt) and ByteDance asset ids (for the render)."""
+    found = likeness.resolve(brief.get("people", []))
+    brief["people"] = [p["id"] for p in found]
+    brief["people_names"] = [p["name"] for p in found]
+    brief["verified_likeness"] = bool(found)
+    return [p["asset_ids"][0] for p in found]
 
 
 PHOTOS: dict[str, Path] = {}
@@ -202,6 +212,11 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path in ("/", "/index.html"):
             return self._file(STATIC / "index.html")
+        if path == "/api/likeness":
+            return self._json({"people": likeness.public_people()})
+        if path.startswith("/api/likeness/session/"):
+            st = likeness.status(path.rsplit("/", 1)[1])
+            return self._json(st) if st else self._json({"error": "no such session"}, 404)
         if path == "/api/options":
             return self._json(options.as_json())
         if path == "/api/health":
@@ -238,9 +253,26 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:  # never leave the page hanging on a server bug
             self._json({"error": f"Server error: {type(e).__name__}"}, 500)
 
+    def _likeness_start(self, body) -> dict:
+        """Begin a one-time identity check. The person opens the link we show and does the liveness check themselves."""
+        name = str(body.get("name", "")).strip()[:60]
+        if not name:
+            raise BadRequest("Enter the person's name.")
+        if not body.get("consent"):
+            raise BadRequest("Confirm this is you, or that the person is with you and agrees.")
+        if pipeline.MOCK:
+            raise BadRequest("Identity verification needs live mode. Demo mode never contacts Comfy or ByteDance.")
+        if not pipeline.key_present():
+            raise BadRequest("No Comfy API key found. Add COMFY_API_KEY to .env.")
+        selfie = save_uploads([body.get("selfie") or {}])
+        if not selfie:
+            raise BadRequest("Add a clear photo of the person's face.")
+        return {"session": likeness.start(name, selfie[0])}
+
     def _quote(self, body) -> dict:
         """Which model would be used, and what it costs. Takes counts, not files, so the page can ask it on every tap."""
         brief = clean_brief(body.get("brief") or {})
+        apply_people(brief)
         counts = body.get("counts") or {}
         n = {k: max(0, min(int(counts.get(k, 0) or 0), 20)) for k in ("images", "videos", "audios", "voices")}
         if not n["videos"]:
@@ -259,6 +291,10 @@ class Handler(BaseHTTPRequestHandler):
     def _post(self, body):
         if self.path == "/api/photos":
             return self._json({"images": register(gather_images(body))})
+        if self.path == "/api/likeness/start":
+            return self._json(self._likeness_start(body))
+        if self.path == "/api/likeness/delete":
+            return self._json({"ok": likeness.delete_person(str(body.get("id", "")))})
         if self.path == "/api/script":
             b = clean_brief(body.get("brief") or {})
             if b["video_mode"] != "reference":
@@ -270,6 +306,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"error": "not found"}, 404)
 
         brief = clean_brief(body.get("brief") or {})
+        assets = apply_people(brief)
         images = gather_images(body)
         videos, audios, voices = gather_media(body)
         mode = brief["video_mode"]
@@ -302,8 +339,8 @@ class Handler(BaseHTTPRequestHandler):
 
         if not brief["consent"]:
             raise BadRequest("Confirm you have the right to use these photos.")
-        if not images and mode == "reference":
-            raise BadRequest("Add at least one photo.")
+        if not images and mode == "reference" and not assets:
+            raise BadRequest("Add at least one photo, or choose a verified person.")
         if not choice["model"]:
             raise BadRequest("No model fits this brief. Loosen the length, sound, budget or likeness options.")
         model = BY_ID[choice["model"]]
@@ -320,7 +357,7 @@ class Handler(BaseHTTPRequestHandler):
         ref_audio = [media.trim(a, a.with_name(a.stem + "_trim" + a.suffix)) for a in audios[:model.audio_refs]]
         soundtrack = audios[0] if audios and brief["soundtrack"] else None
         job = pipeline.start_job(model, plan, images, brief["duration"], videos[:model.video_refs], ref_audio, soundtrack,
-                                 voices[0] if voices else None, mode)
+                                 voices[0] if voices else None, mode, assets)
         return self._json({"job": job})
 
 

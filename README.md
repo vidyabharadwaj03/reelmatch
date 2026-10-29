@@ -47,7 +47,7 @@ Models that pass are ranked (verified over untested, uses all photos, cheaper fi
 | Veo 3.1 Fast | tested, 1 photo and 4s | one photo, 4-8s, sound, about 21 credits per second |
 | Wan 2.7 | tested, 1 photo and 5s | one photo, 5s, silent, about 106 credits |
 | Kling 4.0 | wired, not tested | up to 10 keyframes, 3-30s, sound, about 47 credits per second |
-| Seedance 2.0 real-human (KYC) | not wired | needs a selfie for identity verification |
+| Seedance with a verified person | wired, not run | a person verifies once, then appears as themselves |
 
 A model is only picked automatically when the brief is inside what we have actually tested. You can still choose any other model that fits from "Why this model?".
 Prices come from real billing records. Kling's is Comfy's estimate until it is tested, and the open-weights models run on Comfy's GPUs, so their credit cost is a rough estimate (a 5 second clip used 18 to 47 GPU-seconds). See `docs/MODEL_RESEARCH.md` for sources, caveats and how scores are weighted.
@@ -72,14 +72,22 @@ each job has a credit limit (`REELMATCH_MAX_CREDITS`, default 600); the server o
 
 ## Likeness
 
-The form requires confirmation that you own the photos, or everyone shown has agreed to their use. Seedance also has a verified-likeness route
-(a selfie becomes a verified ByteDance asset). The checkbox exists, but that route is not wired up yet, so ticking it tells you no model fits.
+The form requires confirmation that you own the photos, or everyone shown has agreed to their use.
+
+For a real person who must look like themselves, use **verified people** (Seedance with ByteDance's real-person check):
+1. In step 2, open "Put a verified person in your ad" and press Verify a person.
+2. Choose a clear photo of their face and confirm the consent box. The photo is sent to Comfy, and from there to ByteDance.
+3. You get a link. The person opens it on their own phone and does a short liveness check. Reelmatch never sees that video.
+4. Two ids come back and are saved on your computer only (`outputs/likeness.json`, never committed). The person never has to verify again.
+
+Tick a verified person in any ad and the app routes to Seedance with that identity attached (`@asset_1` in the prompt).
+Verification needs live mode. This route has been wired and tested offline, but a real verification has not been run end to end yet.
 
 ## Honest limits
 
 - Drafts only (480p for Seedance). A 1080p final from the draft is not built.
 - Seedance and Wan are partner APIs through Comfy, so this build is not open-weights. MiniMax H3 has open weights, but a third-party analysis says its license excludes the US. Check the license.
-- Kling 4.0 is wired but not yet run, and the Seedance KYC route is not wired.
+- Kling 4.0 is wired but not yet run, and verified people has not been run end to end with a real verification.
 - Open weights: LTX-2.5 and MiniMax H3 run from model files on Comfy's GPUs with no partner API. H3's license reportedly excludes the US, and LTX's license has not been reviewed. Check both before relying on them.
 - The chooser prefers open-weights models by a small margin when quality looks comparable.
 - Run live and tested: generating from photos. Built from the node spec but **not yet run live**: sending reference video or audio to Seedance, extend and edit.
