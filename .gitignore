@@ -1,0 +1,9 @@
+.env
+outputs/
+assets/
+__pycache__/
+.venv/
+*.pyc
+
+NOTES.md
+scripts/
