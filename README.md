@@ -29,6 +29,19 @@ Open http://localhost:8000. Make a key at https://platform.comfy.org/profile/api
 
 **Tests:** `.venv/bin/python -m unittest discover -s tests -t .`
 
+## Put it online for judging
+
+`render.yaml` deploys a shared copy to Render. It is built to be safe to hand to a few people:
+- everything is closed behind an **access code** (add `?code=THE_CODE` to the link once, and the browser remembers it)
+- it can spend at most `REELMATCH_BUDGET` credits in total (default 6000), `REELMATCH_MAX_CREDITS` per render, two renders at once, eight per visitor per hour
+- identity checks and server folders are turned off, and uploads and renders are deleted after two hours
+- it refuses to listen publicly in live mode without an access code
+
+Steps: create a **new, dedicated Comfy API key** for it, then on render.com choose New > Blueprint, pick this repo, and apply.
+Paste the key into `COMFY_API_KEY` in the service's Environment tab, and read `REELMATCH_ACCESS_CODE` there too.
+Your link is `https://YOUR-SERVICE.onrender.com/?code=THE_CODE`. Delete the service and the key when judging is over.
+The free plan sleeps when idle, so the first load can take about a minute. Three sample product photos ship with the app so visitors can try it without photos of their own.
+
 ## How the model gets chosen
 
 `app/registry.py` checks every model against the brief and returns a pass or fail per rule: adapter wired up, open weights (if asked), length range,

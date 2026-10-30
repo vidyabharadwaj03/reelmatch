@@ -273,7 +273,8 @@
     <label class="drop" id="drop" for="files"><svg class="ic"><use href="#i-upload"/></svg><b>Drop photos here</b> or click to choose<br><span class="hint">JPG, PNG or WebP, up to 20.</span>
       <input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple></label>
     <div class="photos" id="thumbs"></div>
-    <details class="sm"><summary>Use a folder on this computer instead</summary>
+    <button class="ghost" id="sampleBtn" type="button" style="margin-top:12px"><svg class="ic"><use href="#i-camera"/></svg>No photos handy? Try sample product photos</button>
+    <details class="sm" id="folderBox"><summary>Use a folder on this computer instead</summary>
       <label for="folder">Folder path</label><input type="text" id="folder" placeholder="/path/to/your/photos"><div class="hint">Used only when no photos are added above.</div></details>
 
     <details class="more"><summary>Add a video, music or your voice <span class="count hidden" id="extrasCount"></span></summary><div class="in">
@@ -491,8 +492,9 @@ async function health() {
     const h = await (await fetch("/api/health")).json(), b = $("modeBadge");
     if (h.mock) { b.className = "pill mock"; b.innerHTML = "<i></i>Demo mode, nothing is spent"; }
     else if (!h.key) { b.className = "pill warn"; b.innerHTML = "<i></i>No API key, add it to .env"; }
-    else { b.className = "pill"; b.innerHTML = "<i></i>Live, spends credits"; }
-    $("spendBadge").innerHTML = `${ic("coins")}${h.session_credits} spent, ${h.max_credits} max per job`;
+    else { b.className = "pill"; b.innerHTML = h.public ? "<i></i>Live judging copy" : "<i></i>Live, spends credits"; }
+    $("spendBadge").innerHTML = h.public ? `${ic("coins")}${h.budget_left} credits left for judging` : `${ic("coins")}${h.session_credits} spent, ${h.max_credits} max per job`;
+    if (h.public) document.querySelectorAll("#folderBox, #peopleBox").forEach((e) => e.classList.add("hidden"));  // never un-hide: product ads hide the people box themselves
     $("exampleBtn").classList.toggle("hidden", !h.example);
   } catch (e) { $("modeBadge").className = "pill warn"; $("modeBadge").innerHTML = "<i></i>Server not reachable"; }
 }
@@ -502,6 +504,7 @@ let folderImgs = [];
 const photoList = () => (uploads.length ? uploads : folderImgs);
 function renderPhotos() {
   const list = photoList(); photoCount = list.length;
+  $("sampleBtn").classList.toggle("hidden", list.length > 0);
   const card = (p, i, rm) => `<div class="ph"><em>${i + 1}</em><img src="${p.url}" alt="Photo ${i + 1}">${rm ? `<button type="button" class="x" data-i="${i}" aria-label="Remove photo ${i + 1}">${ic("x")}</button>` : ""}</div>`;
   $("thumbs").innerHTML = list.map((p, i) => card(p, i, uploads.length > 0)).join("") + (list.length ? '<button type="button" class="ghost clr" id="clearPhotos">Clear all</button>' : "");
   $("strip").innerHTML = list.map((p, i) => card(p, i, false)).join("") || '<div class="hint" style="color:var(--on-plum)">Photos show up here.</div>';
@@ -537,6 +540,13 @@ const wireDrop = (inputId, dropId, fn) => {
   d.addEventListener("drop", (e) => fn(e.dataTransfer.files));
 };
 wireDrop("files", "drop", takePhotos); $("folder").addEventListener("change", loadFolder);
+$("sampleBtn").onclick = async () => {  // three AI-made product photos shipped with the app, so anyone can try it
+  const files = await Promise.all(["perfume", "oil", "coffee"].map(async (n) => new File([await (await fetch(`/samples/${n}.jpg`)).blob()], `${n}.jpg`, { type: "image/jpeg" })));
+  state.subject = "product"; chips("g-subject", "subject"); onSubject();
+  if (!$("brand").value.trim()) $("brand").value = "Maison Noir";
+  if (!$("description").value.trim()) $("description").value = "A small-batch perfume, face oil and cafe, shown in warm light.";
+  await takePhotos(files);
+};
 
 /* ---- video, music, voice ---- */
 function renderMedia() {

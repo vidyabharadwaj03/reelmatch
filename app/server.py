@@ -2,10 +2,14 @@
 import base64
 import binascii
 import hashlib
+import hmac
 import json
 import math
 import mimetypes
+import os
 import re
+import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -16,11 +20,88 @@ from .script import make_scripts
 from .registry import BY_ID, apply_override, choose
 
 STATIC = Path(__file__).parent / "static"
+SAMPLES = Path(__file__).parent / "samples"  # AI-made product photos, no people, so anyone can try the app
 IMG_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_IMAGES = 20
 MAX_PHOTO_BYTES = 12 * 1024 * 1024
-MAX_BODY = 160 * 1024 * 1024
+MAX_BODY = (60 if os.environ.get("REELMATCH_PUBLIC") == "1" else 160) * 1024 * 1024
 GOALS = {"awareness", "launch", "promo", "event"}
+
+# ---- hosted, judge-only mode (all off by default, so a local run behaves exactly as before) ----
+PUBLIC = os.environ.get("REELMATCH_PUBLIC") == "1"  # a shared copy: no server folders, no identity checks, spending caps
+ACCESS_CODE = os.environ.get("REELMATCH_ACCESS_CODE", "")  # if set, nothing works without it
+TOTAL_BUDGET = int(os.environ.get("REELMATCH_BUDGET", "6000"))  # most credits a public copy may spend in total
+MAX_ACTIVE = int(os.environ.get("REELMATCH_MAX_ACTIVE", "2"))  # renders running at once
+PER_HOUR = int(os.environ.get("REELMATCH_PER_HOUR", "8"))  # renders per visitor per hour
+_hits: dict[str, list[float]] = {}
+_hits_lock = threading.Lock()
+
+
+def access_token(code: str) -> str:
+    """What the browser keeps instead of the code itself."""
+    return hashlib.sha256(("reelmatch|" + code).encode()).hexdigest()
+
+
+def is_authorized(cookie_header: str, code: str = "") -> bool:
+    code = code or ACCESS_CODE
+    if not code:
+        return True
+    for part in (cookie_header or "").split(";"):
+        k, _, v = part.strip().partition("=")
+        if k == "rm_access" and hmac.compare_digest(v, access_token(code)):
+            return True
+    return False
+
+
+def budget_left() -> int:
+    """Credits still available to a public copy: the total minus what is spent or reserved by running renders."""
+    running = sum((j.get("credits") or 0) for j in pipeline.JOBS.values() if j.get("status") in ("queued", "uploading", "rendering") and not j.get("mock"))
+    return max(0, TOTAL_BUDGET - pipeline.LEDGER["credits"] - running)
+
+
+def active_jobs() -> int:
+    return sum(1 for j in pipeline.JOBS.values() if j.get("status") in ("queued", "uploading", "rendering"))
+
+
+def allow_visitor(ip: str) -> bool:
+    now = time.time()
+    with _hits_lock:
+        recent = [t for t in _hits.get(ip, []) if now - t < 3600]
+        if len(recent) >= PER_HOUR:
+            _hits[ip] = recent
+            return False
+        recent.append(now)
+        _hits[ip] = recent
+        return True
+
+
+def sweep(older_than_s: int = 7200):
+    """A public copy keeps nothing for long: uploads and finished renders are deleted after a couple of hours."""
+    keep = {"_mock_sample.mp4", "likeness.json"}
+    now = time.time()
+    for f in pipeline.OUTPUTS.iterdir():
+        try:
+            if f.name in keep or now - f.stat().st_mtime < older_than_s:
+                continue
+            if f.is_dir():
+                for sub in f.rglob("*"):
+                    if sub.is_file():
+                        sub.unlink()
+                for d in sorted((x for x in f.rglob("*") if x.is_dir()), reverse=True):
+                    d.rmdir()
+                f.rmdir()
+            else:
+                f.unlink()
+        except OSError:
+            continue
+
+
+GATE_PAGE = b"""<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Reelmatch</title>
+<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#290d17;color:#fff4de;font:16px system-ui,sans-serif">
+<form method=get style="max-width:340px;padding:24px"><h1 style="margin:0 0 8px;font-size:34px;letter-spacing:-.04em">Reel<span style="color:#d8f36a">match</span></h1>
+<p style="color:#dbc3c8">This copy is for judging. Enter the access code from the entry form.</p>
+<input name=code placeholder="Access code" autofocus style="width:100%;box-sizing:border-box;padding:12px;border-radius:12px;border:0;font:inherit">
+<button style="margin-top:12px;width:100%;padding:12px;border-radius:999px;border:0;background:#d8f36a;color:#290d17;font:700 16px system-ui">Continue</button></form>"""
 
 
 class BadRequest(Exception):
@@ -33,7 +114,7 @@ def sniff_ok(data: bytes) -> bool:
 
 
 def folder_images(folder: str) -> list[Path]:
-    if not folder.strip():
+    if PUBLIC or not folder.strip():
         return []
     p = Path(folder).expanduser()
     if not p.is_absolute():
@@ -208,7 +289,34 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(chunk)
 
+    def _client_ip(self) -> str:
+        fwd = self.headers.get("X-Forwarded-For", "")
+        return (fwd.split(",")[0].strip() if fwd else self.client_address[0]) or "?"
+
+    def _gate(self) -> bool:
+        """True if the request may continue. With an access code set, everything else is closed to visitors without it."""
+        path, _, query = self.path.partition("?")
+        if path == "/health":
+            self.send_response(200); self.send_header("Content-Type", "text/plain"); self.send_header("Content-Length", "2"); self.end_headers(); self.wfile.write(b"ok")
+            return False
+        if is_authorized(self.headers.get("Cookie", "")):
+            return True
+        code = dict(kv.split("=", 1) for kv in query.split("&") if "=" in kv).get("code", "")
+        if code and hmac.compare_digest(code, ACCESS_CODE):
+            secure = "; Secure" if self.headers.get("X-Forwarded-Proto") == "https" else ""
+            self.send_response(302)
+            self.send_header("Set-Cookie", f"rm_access={access_token(ACCESS_CODE)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800{secure}")
+            self.send_header("Location", "/"); self.send_header("Content-Length", "0"); self.end_headers()
+            return False
+        if path in ("/", "/index.html"):
+            self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(GATE_PAGE))); self.end_headers(); self.wfile.write(GATE_PAGE)
+        else:
+            self._json({"error": "Access code required."}, 401)
+        return False
+
     def do_GET(self):
+        if not self._gate():
+            return
         path = self.path.split("?")[0]
         if path in ("/", "/index.html"):
             return self._file(STATIC / "index.html")
@@ -222,13 +330,19 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/health":
             return self._json({"mock": pipeline.MOCK, "key": pipeline.key_present(),
                                "max_credits": pipeline.MAX_JOB_CREDITS, "session_credits": pipeline.LEDGER["credits"],
-                               "example": bool(folder_images("assets/soraa"))})
+                               "example": bool(folder_images("assets/soraa")), "public": PUBLIC,
+                               "budget_left": budget_left() if PUBLIC else None})
         if path == "/api/jobs":
             jobs = sorted(pipeline.JOBS.values(), key=lambda j: j.get("created", 0), reverse=True)[:8]
             return self._json({"jobs": jobs})
         if path.startswith("/api/jobs/"):
             job = pipeline.JOBS.get(path.rsplit("/", 1)[1])
             return self._json(job) if job else self._json({"error": "no such job"}, 404)
+        if path.startswith("/samples/"):
+            target = (SAMPLES / path[len("/samples/"):]).resolve()
+            if SAMPLES.resolve() in target.parents and target.suffix == ".jpg":
+                return self._file(target)
+            return self._json({"error": "not found"}, 404)
         if path.startswith("/photo/"):
             photo = PHOTOS.get(path.rsplit("/", 1)[1])
             return self._file(photo) if photo else self._json({"error": "not found"}, 404)
@@ -239,6 +353,8 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"error": "not found"}, 404)
 
     def do_POST(self):
+        if not self._gate():
+            return
         try:
             length = int(self.headers.get("Content-Length", 0))
             if length > MAX_BODY:
@@ -291,6 +407,8 @@ class Handler(BaseHTTPRequestHandler):
     def _post(self, body):
         if self.path == "/api/photos":
             return self._json({"images": register(gather_images(body))})
+        if PUBLIC and self.path.startswith("/api/likeness"):
+            return self._json({"error": "Identity verification is turned off on this shared copy. Run Reelmatch locally to use it."}, 403)
         if self.path == "/api/likeness/start":
             return self._json(self._likeness_start(body))
         if self.path == "/api/likeness/delete":
@@ -345,6 +463,13 @@ class Handler(BaseHTTPRequestHandler):
             raise BadRequest("No model fits this brief. Loosen the length, sound, budget or likeness options.")
         model = BY_ID[choice["model"]]
         cost = choice["cost"]
+        if PUBLIC and not pipeline.MOCK:
+            if cost > budget_left():
+                raise BadRequest("This judging copy has used up its credit budget. Run Reelmatch locally from the repo, or use demo mode.")
+            if active_jobs() >= MAX_ACTIVE:
+                raise BadRequest("Other renders are running right now. Please try again in a minute.")
+            if not allow_visitor(self._client_ip()):
+                raise BadRequest(f"That is the limit of {PER_HOUR} renders per hour from one visitor.")
         if body.get("confirm_credits") != cost:
             raise BadRequest("Credit confirmation does not match the estimate.")
         if cost > pipeline.MAX_JOB_CREDITS:
@@ -361,12 +486,23 @@ class Handler(BaseHTTPRequestHandler):
         return self._json({"job": job})
 
 
-def main(port=8000):
+def main(port=None, host=None):
+    port = int(port or os.environ.get("PORT", 8000))
+    host = host or os.environ.get("HOST", "127.0.0.1")
+    if host not in ("127.0.0.1", "localhost") and not ACCESS_CODE and not pipeline.MOCK:
+        raise SystemExit("Refusing to listen on a public address in live mode without REELMATCH_ACCESS_CODE set.")
     pipeline.OUTPUTS.mkdir(exist_ok=True)
     pipeline.load_history()
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    if PUBLIC:
+        def loop():
+            while True:
+                time.sleep(600)
+                sweep()
+        threading.Thread(target=loop, daemon=True).start()
+    srv = ThreadingHTTPServer((host, port), Handler)
     mode = "MOCK (no credits spent)" if pipeline.MOCK else "LIVE (spends Comfy credits)"
-    print(f"Reelmatch on http://localhost:{port}  [{mode}]")
+    extra = f", shared copy, budget {TOTAL_BUDGET} credits, access code {'on' if ACCESS_CODE else 'OFF'}" if PUBLIC else ""
+    print(f"Reelmatch on http://{host}:{port}  [{mode}{extra}]")
     srv.serve_forever()
 
 

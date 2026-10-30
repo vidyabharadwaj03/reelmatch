@@ -296,6 +296,79 @@ class LikenessTests(unittest.TestCase):
             self.assertIn("live mode", str(cm.exception))
 
 
+class SharedCopyTests(unittest.TestCase):
+    def test_no_access_code_means_open_as_before(self):
+        self.assertTrue(server.is_authorized("", code=""))
+
+    def test_the_right_cookie_gets_in_and_wrong_or_missing_ones_do_not(self):
+        good = f"theme=x; rm_access={server.access_token('s3cret')}"
+        self.assertTrue(server.is_authorized(good, code="s3cret"))
+        self.assertFalse(server.is_authorized("rm_access=nope", code="s3cret"))
+        self.assertFalse(server.is_authorized("", code="s3cret"))
+        self.assertFalse(server.is_authorized(f"rm_access={server.access_token('other')}", code="s3cret"))
+
+    def test_the_cookie_never_contains_the_code(self):
+        self.assertNotIn("s3cret", server.access_token("s3cret"))
+
+    def test_budget_counts_spent_and_still_running_renders(self):
+        from app import pipeline
+        with mock.patch.object(server, "TOTAL_BUDGET", 1000), mock.patch.dict(pipeline.LEDGER, {"credits": 300}), \
+                mock.patch.dict(pipeline.JOBS, {"a": {"status": "rendering", "credits": 200, "mock": False}, "b": {"status": "done", "credits": 999, "mock": False},
+                                                "c": {"status": "rendering", "credits": 50, "mock": True}}, clear=True):
+            self.assertEqual(server.budget_left(), 500)  # 1000 - 300 spent - 200 reserved; finished and demo jobs are not double counted
+
+    def test_budget_never_goes_negative(self):
+        from app import pipeline
+        with mock.patch.object(server, "TOTAL_BUDGET", 100), mock.patch.dict(pipeline.LEDGER, {"credits": 500}):
+            self.assertEqual(server.budget_left(), 0)
+
+    def test_a_visitor_is_limited_per_hour(self):
+        with mock.patch.object(server, "PER_HOUR", 3), mock.patch.dict(server._hits, {}, clear=True):
+            self.assertEqual([server.allow_visitor("1.1.1.1") for _ in range(5)], [True, True, True, False, False])
+            self.assertTrue(server.allow_visitor("2.2.2.2"))
+
+    def test_server_folders_are_off_on_a_public_copy(self):
+        with mock.patch.object(server, "PUBLIC", True):
+            self.assertEqual(server.folder_images("assets/soraa"), [])
+            self.assertEqual(server.gather_images({"folder": "assets/soraa", "uploads": []}), [])
+
+    def test_sweep_deletes_old_files_and_keeps_protected_ones(self):
+        import os as _os
+        from app import pipeline
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            (d / "oldjob").mkdir(); (d / "oldjob" / "video.mp4").write_bytes(b"x")
+            (d / "fresh").mkdir(); (d / "fresh" / "video.mp4").write_bytes(b"x")
+            (d / "likeness.json").write_text("[]")
+            old = 1_000_000_000
+            _os.utime(d / "oldjob" / "video.mp4", (old, old)); _os.utime(d / "oldjob", (old, old)); _os.utime(d / "likeness.json", (old, old))
+            with mock.patch.object(pipeline, "OUTPUTS", d):
+                server.sweep(older_than_s=3600)
+            self.assertFalse((d / "oldjob").exists())
+            self.assertTrue((d / "fresh" / "video.mp4").exists())
+            self.assertTrue((d / "likeness.json").exists())
+
+    def test_a_public_listener_without_an_access_code_refuses_to_start(self):
+        with mock.patch.object(server, "ACCESS_CODE", ""), mock.patch.object(server.pipeline, "MOCK", False):
+            with self.assertRaises(SystemExit):
+                server.main(port=0, host="0.0.0.0")
+
+
+class SampleTests(unittest.TestCase):
+    def test_three_small_sample_photos_ship_with_the_app(self):
+        files = sorted(server.SAMPLES.glob("*.jpg"))
+        self.assertEqual([f.name for f in files], ["coffee.jpg", "oil.jpg", "perfume.jpg"])
+        for f in files:
+            self.assertTrue(server.sniff_ok(f.read_bytes()[:16]), f.name)
+            self.assertLess(f.stat().st_size, 300 * 1024, f.name)
+
+    def test_the_page_asks_for_exactly_the_samples_that_exist(self):
+        page = (server.STATIC / "index.html").read_text()
+        for name in ("perfume", "oil", "coffee"):
+            self.assertIn(f'"{name}"', page)
+            self.assertTrue((server.SAMPLES / f"{name}.jpg").exists())
+
+
 class TestedRangeTests(unittest.TestCase):
     def test_a_model_tested_on_one_photo_does_not_win_a_five_photo_ad(self):
         r = choose({"duration": 15, "subject": "people"}, 5)

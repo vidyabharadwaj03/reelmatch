@@ -1,0 +1,25 @@
+# One-click deploy on Render: New > Blueprint > pick this repo.
+# This is a shared copy for judging. It needs an access code, caps total spending, and turns off identity checks and server folders.
+services:
+  - type: web
+    name: reelmatch
+    runtime: python
+    plan: free            # free instances sleep after 15 minutes idle; the first load then takes about 30-60 seconds
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.server
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: HOST
+        value: 0.0.0.0
+      - key: REELMATCH_PUBLIC
+        value: "1"
+      - key: REELMATCH_ACCESS_CODE
+        generateValue: true     # Render makes a random code. Read it in the dashboard, then add ?code=THAT to your link.
+      - key: REELMATCH_BUDGET
+        value: "6000"           # most credits this copy may spend in total
+      - key: REELMATCH_MAX_CREDITS
+        value: "500"            # most credits for one render
+      - key: COMFY_API_KEY
+        sync: false             # you paste a NEW, dedicated key in the dashboard. Never commit it.
